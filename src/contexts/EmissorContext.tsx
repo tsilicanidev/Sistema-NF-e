@@ -43,7 +43,7 @@ export const EmissorProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const emissorEnv: Emissor = {
     id: crypto.randomUUID(),
     razaoSocial: import.meta.env.VITE_EMPRESA_RAZAO_SOCIAL,
-    nomeFantasia: import.meta.env.VITE_EMPRESA_RAZAO_SOCIAL,
+    nomeFantasia: import.meta.env.VITE_EMPRESA_NOME_FANTASIA,
     cnpj: import.meta.env.VITE_EMPRESA_CNPJ,
     inscricaoEstadual: import.meta.env.VITE_EMPRESA_IE,
     regimeTributario: 1,
