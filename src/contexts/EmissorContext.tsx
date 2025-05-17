@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useNotificacao } from './NotificacaoContext';
-import { supabase } from '../services/supabase';
 
 export interface Emissor {
   id: string;
@@ -20,7 +19,7 @@ export interface Emissor {
     codigoPais: string;
     pais: string;
   };
-  regimeTributario: 1 | 2 | 3; // 1 = Simples Nacional, 2 = Simples Nacional - excesso de sublimite, 3 = Normal
+  regimeTributario: 1 | 2 | 3;
 }
 
 interface EmissorContextType {
@@ -46,84 +45,29 @@ export const EmissorProvider: React.FC<{ children: React.ReactNode }> = ({ child
     nomeFantasia: import.meta.env.VITE_EMPRESA_NOME_FANTASIA,
     cnpj: import.meta.env.VITE_EMPRESA_CNPJ,
     inscricaoEstadual: import.meta.env.VITE_EMPRESA_IE,
-    regimeTributario: 1,
+    regimeTributario: Number(import.meta.env.VITE_EMPRESA_REGIME) as 1 | 2 | 3,
     endereco: {
-      logradouro: import.meta.env.VITE_EMISSOR_ENDERECO_LOGRADOURO,
+      logradouro: import.meta.env.VITE_EMISSOR_ENDERECO,
       numero: import.meta.env.VITE_EMISSOR_ENDERECO_NUMERO,
       bairro: import.meta.env.VITE_EMISSOR_ENDERECO_BAIRRO,
       municipio: import.meta.env.VITE_EMISSOR_ENDERECO_CIDADE,
       uf: import.meta.env.VITE_EMISSOR_ENDERECO_UF,
       cep: import.meta.env.VITE_EMISSOR_ENDERECO_CEP,
-      codigoMunicipio: "350660",
-      codigoPais: "1058",
-      pais: "Brasil",
+      codigoMunicipio: import.meta.env.VITE_EMISSOR_ENDERECO_COD_MUNICIPIO,
+      codigoPais: '1058',
+      pais: 'Brasil',
     },
   };
 
-  const [emissor, setEmissor] = useState<Emissor | null>(null);
-  const [carregando, setCarregando] = useState(true);
+  const [emissor, setEmissor] = useState<Emissor>(emissorEnv);
+  const [carregando, setCarregando] = useState(false);
   const { adicionarNotificacao } = useNotificacao();
-
-  useEffect(() => {
-    async function carregarEmissor() {
-      try {
-        const { data, error } = await supabase
-          .from('emissor')
-          .select('*')
-          .maybeSingle();
-
-        if (error || !data) throw error;
-
-        const emissorFormatado = {
-          ...data,
-          razaoSocial: data.razao_social,
-          nomeFantasia: data.nome_fantasia,
-          inscricaoEstadual: data.inscricao_estadual,
-          regimeTributario: data.regime_tributario,
-        };
-        setEmissor(emissorFormatado);
-      } catch (error) {
-        console.warn("Erro ao carregar dados do Supabase, usando .env");
-        setEmissor(emissorEnv);
-        adicionarNotificacao('erro', 'Carregando dados do emissor padrão');
-      } finally {
-        setCarregando(false);
-      }
-    }
-
-    carregarEmissor();
-  }, [adicionarNotificacao]);
 
   const salvarEmissor = async (dados: Emissor) => {
     try {
       setCarregando(true);
-
-      const dadosFormatados = {
-        razao_social: dados.razaoSocial,
-        nome_fantasia: dados.nomeFantasia,
-        cnpj: dados.cnpj,
-        inscricao_estadual: dados.inscricaoEstadual,
-        regime_tributario: dados.regimeTributario,
-        endereco: dados.endereco,
-      };
-
-      if (emissor?.id) {
-        const { error } = await supabase
-          .from('emissor')
-          .update(dadosFormatados)
-          .eq('id', emissor.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('emissor')
-          .insert([dadosFormatados]);
-
-        if (error) throw error;
-      }
-
       setEmissor(dados);
-      adicionarNotificacao('sucesso', 'Dados do emissor salvos com sucesso');
+      adicionarNotificacao('sucesso', 'Dados do emissor salvos localmente');
     } catch (error) {
       adicionarNotificacao('erro', 'Erro ao salvar dados do emissor');
       console.error(error);
