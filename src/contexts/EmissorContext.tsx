@@ -48,7 +48,7 @@ export const EmissorProvider: React.FC<{ children: React.ReactNode }> = ({ child
     inscricaoEstadual: import.meta.env.VITE_EMPRESA_IE,
     regimeTributario: 1,
     endereco: {
-      logradouro: import.meta.env.VITE_EMISSOR_ENDERECO,
+      logradouro: import.meta.env.VITE_EMISSOR_ENDERECO_LOGRADOURO,
       numero: import.meta.env.VITE_EMISSOR_ENDERECO_NUMERO,
       bairro: import.meta.env.VITE_EMISSOR_ENDERECO_BAIRRO,
       municipio: import.meta.env.VITE_EMISSOR_ENDERECO_CIDADE,
