@@ -40,6 +40,26 @@ export const useEmissor = () => {
 };
 
 export const EmissorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const emissorEnv: Emissor = {
+    id: crypto.randomUUID(),
+    razaoSocial: import.meta.env.VITE_EMISSOR_RAZAO_SOCIAL,
+    nomeFantasia: import.meta.env.VITE_EMISSOR_RAZAO_SOCIAL,
+    cnpj: import.meta.env.VITE_EMISSOR_CNPJ,
+    inscricaoEstadual: import.meta.env.VITE_EMISSOR_IE,
+    regimeTributario: 1,
+    endereco: {
+      logradouro: import.meta.env.VITE_EMISSOR_ENDERECO_LOGRADOURO,
+      numero: import.meta.env.VITE_EMISSOR_ENDERECO_NUMERO,
+      bairro: import.meta.env.VITE_EMISSOR_ENDERECO_BAIRRO,
+      municipio: import.meta.env.VITE_EMISSOR_ENDERECO_CIDADE,
+      uf: import.meta.env.VITE_EMISSOR_ENDERECO_UF,
+      cep: import.meta.env.VITE_EMISSOR_ENDERECO_CEP,
+      codigoMunicipio: "3550308",
+      codigoPais: "1058",
+      pais: "Brasil",
+    },
+  };
+
   const [emissor, setEmissor] = useState<Emissor | null>(null);
   const [carregando, setCarregando] = useState(true);
   const { adicionarNotificacao } = useNotificacao();
@@ -52,22 +72,20 @@ export const EmissorProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .select('*')
           .maybeSingle();
 
-        if (error) throw error;
+        if (error || !data) throw error;
 
-        if (data) {
-          // Convert snake_case to camelCase
-          const emissorFormatado = {
-            ...data,
-            razaoSocial: data.razao_social,
-            nomeFantasia: data.nome_fantasia,
-            inscricaoEstadual: data.inscricao_estadual,
-            regimeTributario: data.regime_tributario,
-          };
-          setEmissor(emissorFormatado);
-        }
+        const emissorFormatado = {
+          ...data,
+          razaoSocial: data.razao_social,
+          nomeFantasia: data.nome_fantasia,
+          inscricaoEstadual: data.inscricao_estadual,
+          regimeTributario: data.regime_tributario,
+        };
+        setEmissor(emissorFormatado);
       } catch (error) {
-        adicionarNotificacao('erro', 'Erro ao carregar dados do emissor');
-        console.error(error);
+        console.warn("Erro ao carregar dados do Supabase, usando .env");
+        setEmissor(emissorEnv);
+        adicionarNotificacao('erro', 'Carregando dados do emissor padrão');
       } finally {
         setCarregando(false);
       }
@@ -79,34 +97,31 @@ export const EmissorProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const salvarEmissor = async (dados: Emissor) => {
     try {
       setCarregando(true);
-      
-      // Convert camelCase to snake_case for database
+
       const dadosFormatados = {
         razao_social: dados.razaoSocial,
         nome_fantasia: dados.nomeFantasia,
         cnpj: dados.cnpj,
         inscricao_estadual: dados.inscricaoEstadual,
         regime_tributario: dados.regimeTributario,
-        endereco: dados.endereco
+        endereco: dados.endereco,
       };
-      
+
       if (emissor?.id) {
-        // Atualizar emissor existente
         const { error } = await supabase
           .from('emissor')
           .update(dadosFormatados)
           .eq('id', emissor.id);
-          
+
         if (error) throw error;
       } else {
-        // Inserir novo emissor
         const { error } = await supabase
           .from('emissor')
           .insert([dadosFormatados]);
-          
+
         if (error) throw error;
       }
-      
+
       setEmissor(dados);
       adicionarNotificacao('sucesso', 'Dados do emissor salvos com sucesso');
     } catch (error) {
@@ -118,13 +133,7 @@ export const EmissorProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   return (
-    <EmissorContext.Provider
-      value={{
-        emissor,
-        carregando,
-        salvarEmissor
-      }}
-    >
+    <EmissorContext.Provider value={{ emissor, carregando, salvarEmissor }}>
       {children}
     </EmissorContext.Provider>
   );
