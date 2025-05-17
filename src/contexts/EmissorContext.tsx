@@ -45,17 +45,17 @@ export const EmissorProvider: React.FC<{ children: React.ReactNode }> = ({ child
     nomeFantasia: import.meta.env.VITE_EMPRESA_NOME_FANTASIA,
     cnpj: import.meta.env.VITE_EMPRESA_CNPJ,
     inscricaoEstadual: import.meta.env.VITE_EMPRESA_IE,
-    regimeTributario: Number(import.meta.env.VITE_EMPRESA_REGIME) as 1 | 2 | 3,
+    regimeTributario: 1,
     endereco: {
-      logradouro: import.meta.env.VITE_EMISSOR_ENDERECO,
+      logradouro: import.meta.env.VITE_EMISSOR_ENDERECO_LOGRADOURO,
       numero: import.meta.env.VITE_EMISSOR_ENDERECO_NUMERO,
       bairro: import.meta.env.VITE_EMISSOR_ENDERECO_BAIRRO,
       municipio: import.meta.env.VITE_EMISSOR_ENDERECO_CIDADE,
       uf: import.meta.env.VITE_EMISSOR_ENDERECO_UF,
       cep: import.meta.env.VITE_EMISSOR_ENDERECO_CEP,
-      codigoMunicipio: import.meta.env.VITE_EMISSOR_ENDERECO_COD_MUNICIPIO,
-      codigoPais: '1058',
-      pais: 'Brasil',
+      codigoMunicipio: "350660",
+      codigoPais: "1058",
+      pais: "Brasil",
     },
   };
 
