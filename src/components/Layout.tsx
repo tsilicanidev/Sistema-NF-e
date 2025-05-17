@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { FileText, Home, Settings, FileCheck, Key } from 'lucide-react';
+import { FileText, Home, Settings, FileCheck } from 'lucide-react';
 import { useNotificacao } from '../contexts/NotificacaoContext';
 import Notificacao from './Notificacao';
 
@@ -15,7 +15,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const menuItems = [
     { path: '/dashboard', icon: <Home size={20} />, text: 'Dashboard' },
     { path: '/notas/nova', icon: <FileText size={20} />, text: 'Nova NF-e' },
-    { path: '/certificados', icon: <Key size={20} />, text: 'Certificados' },
     { path: '/configuracoes/emissor', icon: <Settings size={20} />, text: 'Configurações' },
   ];
 
@@ -59,7 +58,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <FileCheck size={20} />
             <h1 className="text-lg font-bold">Sistema NF-e</h1>
           </div>
-          {/* Mobile menu button would go here */}
         </header>
 
         {/* Content area */}

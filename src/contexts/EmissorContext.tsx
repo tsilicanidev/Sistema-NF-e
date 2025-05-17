@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNotificacao } from './NotificacaoContext';
 
 export interface Emissor {
-  id: string;
   razaoSocial: string;
   nomeFantasia: string;
   cnpj: string;
@@ -10,14 +9,13 @@ export interface Emissor {
   endereco: {
     logradouro: string;
     numero: string;
-    complemento?: string;
     bairro: string;
-    codigoMunicipio: string;
     municipio: string;
     uf: string;
     cep: string;
     codigoPais: string;
     pais: string;
+    codigoMunicipio: string;
   };
   regimeTributario: 1 | 2 | 3;
 }
@@ -25,7 +23,6 @@ export interface Emissor {
 interface EmissorContextType {
   emissor: Emissor | null;
   carregando: boolean;
-  salvarEmissor: (dados: Emissor) => Promise<void>;
 }
 
 const EmissorContext = createContext<EmissorContextType | null>(null);
@@ -39,45 +36,52 @@ export const useEmissor = () => {
 };
 
 export const EmissorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const emissorEnv: Emissor = {
-    id: crypto.randomUUID(),
-    razaoSocial: import.meta.env.VITE_EMPRESA_RAZAO_SOCIAL,
-    nomeFantasia: import.meta.env.VITE_EMPRESA_NOME_FANTASIA,
-    cnpj: import.meta.env.VITE_EMPRESA_CNPJ,
-    inscricaoEstadual: import.meta.env.VITE_EMPRESA_IE,
-    regimeTributario: 1,
-    endereco: {
-      logradouro: import.meta.env.VITE_EMISSOR_ENDERECO_LOGRADOURO,
-      numero: import.meta.env.VITE_EMISSOR_ENDERECO_NUMERO,
-      bairro: import.meta.env.VITE_EMISSOR_ENDERECO_BAIRRO,
-      municipio: import.meta.env.VITE_EMISSOR_ENDERECO_CIDADE,
-      uf: import.meta.env.VITE_EMISSOR_ENDERECO_UF,
-      cep: import.meta.env.VITE_EMISSOR_ENDERECO_CEP,
-      codigoMunicipio: "350660",
-      codigoPais: "1058",
-      pais: "Brasil",
-    },
-  };
-
-  const [emissor, setEmissor] = useState<Emissor>(emissorEnv);
-  const [carregando, setCarregando] = useState(false);
+  const [emissor, setEmissor] = useState<Emissor | null>(null);
+  const [carregando, setCarregando] = useState(true);
   const { adicionarNotificacao } = useNotificacao();
 
-  const salvarEmissor = async (dados: Emissor) => {
-    try {
-      setCarregando(true);
-      setEmissor(dados);
-      adicionarNotificacao('sucesso', 'Dados do emissor salvos localmente');
-    } catch (error) {
-      adicionarNotificacao('erro', 'Erro ao salvar dados do emissor');
-      console.error(error);
-    } finally {
-      setCarregando(false);
+  useEffect(() => {
+    async function carregarEmissor() {
+      try {
+        // Carregar dados do emissor do .env
+        const emissorData: Emissor = {
+          razaoSocial: import.meta.env.VITE_EMPRESA_RAZAO_SOCIAL,
+          nomeFantasia: import.meta.env.VITE_EMPRESA_NOME_FANTASIA,
+          cnpj: import.meta.env.VITE_EMPRESA_CNPJ,
+          inscricaoEstadual: import.meta.env.VITE_EMPRESA_IE,
+          regimeTributario: Number(import.meta.env.VITE_EMPRESA_REGIME) as 1 | 2 | 3,
+          endereco: {
+            logradouro: import.meta.env.VITE_EMISSOR_ENDERECO_LOGRADOURO,
+            numero: import.meta.env.VITE_EMISSOR_ENDERECO_NUMERO,
+            bairro: import.meta.env.VITE_EMISSOR_ENDERECO_BAIRRO,
+            municipio: import.meta.env.VITE_EMISSOR_ENDERECO_CIDADE,
+            uf: import.meta.env.VITE_EMISSOR_ENDERECO_UF,
+            cep: import.meta.env.VITE_EMISSOR_ENDERECO_CEP,
+            codigoPais: import.meta.env.VITE_EMISSOR_ENDERECO_COD_PAIS,
+            pais: import.meta.env.VITE_EMISSOR_ENDERECO_PAIS,
+            codigoMunicipio: '3505708' // Código IBGE de Barueri
+          }
+        };
+
+        setEmissor(emissorData);
+      } catch (error) {
+        console.error('Erro ao carregar dados do emissor:', error);
+        adicionarNotificacao('erro', 'Erro ao carregar dados do emissor');
+      } finally {
+        setCarregando(false);
+      }
     }
-  };
+
+    carregarEmissor();
+  }, [adicionarNotificacao]);
 
   return (
-    <EmissorContext.Provider value={{ emissor, carregando, salvarEmissor }}>
+    <EmissorContext.Provider
+      value={{
+        emissor,
+        carregando
+      }}
+    >
       {children}
     </EmissorContext.Provider>
   );

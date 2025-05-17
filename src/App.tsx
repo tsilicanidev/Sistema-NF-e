@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import NotaFiscalForm from './pages/NotaFiscalForm';
 import NotaFiscalVisualizacao from './pages/NotaFiscalVisualizacao';
-import Certificados from './pages/Certificados';
 import ConfiguracaoEmissor from './pages/ConfiguracaoEmissor';
 import Layout from './components/Layout';
 import { NotificacaoProvider } from './contexts/NotificacaoContext';
@@ -23,7 +22,6 @@ function App() {
                 <Route path="/notas/nova" element={<NotaFiscalForm />} />
                 <Route path="/notas/editar/:id" element={<NotaFiscalForm />} />
                 <Route path="/notas/visualizar/:id" element={<NotaFiscalVisualizacao />} />
-                <Route path="/certificados" element={<Certificados />} />
                 <Route path="/configuracoes/emissor" element={<ConfiguracaoEmissor />} />
               </Routes>
             </Layout>

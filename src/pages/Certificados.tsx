@@ -57,21 +57,13 @@ const Certificados: React.FC = () => {
         const dataValidade = new Date();
         dataValidade.setFullYear(dataAtual.getFullYear() + 1); // Simulando um certificado válido por 1 ano
         
-        await fetch('https://mkgldotwtfgwppvssiyd.supabase.co/rest/v1/certificados', {
-  method: 'POST',
-  headers: {
-    apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    'Content-Type': 'application/json',
-    Prefer: 'return=representation'
-  },
-  body: JSON.stringify({
-    nome,
-    arquivo: base64,
-    senha,
-    validade: dataValidade.toISOString().split('T')[0], // formato YYYY-MM-DD
-    ativo: certificados.length === 0
-  })
-});
+        await adicionarCertificado({
+          nome,
+          arquivo: base64,
+          senha,
+          validade: dataValidade,
+          ativo: certificados.length === 0 // Ativa automaticamente se for o primeiro certificado
+        });
         
         // Limpa o formulário e fecha o modal
         setNome('');
