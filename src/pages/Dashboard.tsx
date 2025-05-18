@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, FilePlus, FileText, FileWarning, Check, Clock, X, Search } from 'lucide-react';
-import { supabase } from '../services/supabase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { gerarDANFE } from '../services/danfeService';
 
 interface NotaFiscal {
   id: string;
@@ -19,29 +19,14 @@ const Dashboard: React.FC = () => {
   const [notas, setNotas] = useState<NotaFiscal[]>([]);
   const [filtro, setFiltro] = useState('');
   const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    async function carregarNotas() {
-      try {
-        setErro(null);
-        const { data, error } = await supabase
-          .from('notas_fiscais')
-          .select('*')
-          .order('data_emissao', { ascending: false })
-          .limit(20);
-
-        if (error) throw error;
-        setNotas(data || []);
-      } catch (error) {
-        console.error('Erro ao carregar notas fiscais:', error);
-        setErro('Não foi possível carregar as notas fiscais. Por favor, verifique sua conexão e tente novamente.');
-      } finally {
-        setCarregando(false);
-      }
+    // Load notes from localStorage
+    const notasStorage = localStorage.getItem('notas_fiscais');
+    if (notasStorage) {
+      setNotas(JSON.parse(notasStorage));
     }
-
-    carregarNotas();
+    setCarregando(false);
   }, []);
 
   const getStatusIcon = (status: string) => {
@@ -86,6 +71,23 @@ const Dashboard: React.FC = () => {
         return 'Cancelada';
       default:
         return 'Pendente';
+    }
+  };
+
+  const visualizarDanfe = (nota: NotaFiscal) => {
+    const danfeDataUrl = gerarDANFE(nota);
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(`
+        <html>
+          <head>
+            <title>DANFE - ${nota.numero}</title>
+          </head>
+          <body style="margin:0;padding:0;">
+            <embed width="100%" height="100%" src="${danfeDataUrl}" type="application/pdf" />
+          </body>
+        </html>
+      `);
     }
   };
 
@@ -168,12 +170,7 @@ const Dashboard: React.FC = () => {
         </div>
         
         <div className="overflow-x-auto">
-          {erro ? (
-            <div className="p-8 text-center text-error-600 bg-error-50">
-              <FileWarning className="mx-auto mb-2" size={24} />
-              {erro}
-            </div>
-          ) : carregando ? (
+          {carregando ? (
             <div className="p-8 text-center text-neutral-500">Carregando...</div>
           ) : notasFiltradas.length > 0 ? (
             <table className="w-full">
@@ -207,13 +204,13 @@ const Dashboard: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <Link
-                        to={`/notas/visualizar/${nota.id}`}
+                      <button
+                        onClick={() => visualizarDanfe(nota)}
                         className="text-primary-600 hover:text-primary-800 font-medium inline-flex items-center"
                       >
                         <span>Visualizar</span>
                         <ChevronRight size={16} />
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 ))}
