@@ -1,37 +1,16 @@
+
 import React from 'react';
+import { VisualizarDanfeButton } from '@/components/VisualizarDanfeButton';
 
-interface VisualizarDanfeButtonProps {
-  xml: string;
-}
+const exemploXml = `<NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe versao="4.00" Id="NFe00000000000000000000000000000000000000000000"></infNFe></NFe>`;
 
-export const VisualizarDanfeButton: React.FC<VisualizarDanfeButtonProps> = ({ xml }) => {
-  const visualizarDanfe = async () => {
-    try {
-      const response = await fetch('/api/visualizarDanfe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ xml })
-      });
-
-      if (!response.ok) {
-        console.error('Erro ao gerar DANFE');
-        return;
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch (error) {
-      console.error('Erro ao visualizar DANFE:', error);
-    }
-  };
-
+const NotaFiscalVisualizacao: React.FC = () => {
   return (
-    <button
-      onClick={visualizarDanfe}
-      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-    >
-      Visualizar DANFE
-    </button>
+    <div className="p-4">
+      <h1 className="text-xl font-bold mb-4">Visualização da Nota Fiscal</h1>
+      <VisualizarDanfeButton xml={exemploXml} />
+    </div>
   );
 };
+
+export default NotaFiscalVisualizacao;

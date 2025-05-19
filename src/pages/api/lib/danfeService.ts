@@ -1,13 +1,20 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { parse } from 'fast-xml-parser';
+import libxmljs from 'libxmljs2';
+import fs from 'fs';
+import path from 'path';
 import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
+import { createCanvas } from 'canvas';
 
-import bwipjs from 'bwip-js';
-
+const XSD_PATH = path.resolve(__dirname, '../../schemas/leiauteNFe_v4.00.xsd');
 
 export async function gerarDanfePDF(xml: string): Promise<Uint8Array> {
-    const json = parse(xml, { ignoreAttributes: false, attributeNamePrefix: '' });
+  const isValid = await validarXml(xml);
+  if (!isValid) throw new Error('XML inválido conforme leiauteNFe_v4.00.xsd');
+
+  const json = parse(xml, { ignoreAttributes: false, attributeNamePrefix: '' });
   const nfe = json.NFe?.infNFe || json['nfeProc']?.NFe?.infNFe;
   const supl = json['nfeProc']?.NFe?.infNFeSupl || json.NFe?.infNFeSupl;
 
@@ -86,12 +93,22 @@ export async function gerarDanfePDF(xml: string): Promise<Uint8Array> {
 
   const chave = nfe.Id?.replace(/^NFe/, '');
   if (chave) {
-    const barcodeBuffer = await bwipjs.toBuffer({ bcid: 'code128', text: chave, scale: 2, height: 10 });
-    const barcodeDataUrl = 'data:image/png;base64,' + barcodeBuffer.toString('base64');
+    const canvas = createCanvas(300, 100);
+    JsBarcode(canvas, chave, { format: 'CODE128', displayValue: false });
+    const barcodeDataUrl = canvas.toDataURL('image/png');
     doc.addImage(barcodeDataUrl, 'PNG', 20, doc.internal.pageSize.height - 20, 170, 20);
   }
 
   return doc.output('arraybuffer');
 }
 
-
+async function validarXml(xml: string): Promise<boolean> {
+  try {
+    const xmlDoc = libxmljs.parseXml(xml);
+    const xsdDoc = libxmljs.parseXml(fs.readFileSync(XSD_PATH, 'utf8'));
+    return xmlDoc.validate(xsdDoc);
+  } catch (error) {
+    console.error('Erro ao validar XML:', error);
+    return false;
+  }
+}
