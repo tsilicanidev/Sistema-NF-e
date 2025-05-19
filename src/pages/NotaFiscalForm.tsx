@@ -78,14 +78,19 @@ const NotaFiscalForm: React.FC = () => {
   }, [emissor, certificado, adicionarNotificacao, navigate]);
 
   const onSubmit = async (data: NotaFiscalFormData) => {
-    setAttemptedSubmit(true);
-
-    if (produtos.length === 0) {
-      adicionarNotificacao('erro', 'Adicione pelo menos um produto');
-      return;
-    }
-
     try {
+      setAttemptedSubmit(true);
+
+      if (produtos.length === 0) {
+        adicionarNotificacao('erro', 'Adicione pelo menos um produto');
+        return;
+      }
+
+      if (!certificado?.arquivo || !certificado?.senha) {
+        adicionarNotificacao('erro', 'Certificado digital não configurado corretamente');
+        return;
+      }
+
       setLoading(true);
 
       const valorTotal = produtos.reduce((total, produto) => {
@@ -106,8 +111,14 @@ const NotaFiscalForm: React.FC = () => {
         informacoesAdicionais: data.informacoesAdicionais
       };
 
-      // Pass the IDs instead of the entire objects
-      const resultado = await emitirNFe(notaFiscal, emissor.id, certificado.id);
+      const resultado = await emitirNFe(
+        notaFiscal,
+        emissor.id,
+        {
+          pfxBase64: certificado.arquivo,
+          password: certificado.senha
+        }
+      );
 
       if (resultado.status === 'autorizada') {
         adicionarNotificacao('sucesso', 'NF-e emitida com sucesso');

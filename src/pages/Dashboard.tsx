@@ -1,230 +1,163 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Search, CheckCircle, Clock, XCircle, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, FilePlus, FileText, FileWarning, Check, Clock, X, Search } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { gerarDANFE } from '../services/danfeService';
 
 interface NotaFiscal {
-  id: string;
   numero: string;
-  chave: string;
   destinatario: string;
   valor: number;
-  status: 'pendente' | 'autorizada' | 'rejeitada' | 'cancelada';
-  data_emissao: string;
+  data: string;
+  status: 'autorizada' | 'pendente' | 'rejeitada';
 }
 
-const Dashboard: React.FC = () => {
-  const [notas, setNotas] = useState<NotaFiscal[]>([]);
-  const [filtro, setFiltro] = useState('');
-  const [carregando, setCarregando] = useState(true);
-
-  useEffect(() => {
-    // Load notes from localStorage
-    const notasStorage = localStorage.getItem('notas_fiscais');
-    if (notasStorage) {
-      setNotas(JSON.parse(notasStorage));
+function Dashboard() {
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Mock data for demonstration
+  const notasFiscais: NotaFiscal[] = [
+    {
+      numero: '242934',
+      destinatario: 'Thiago S S Camargo',
+      valor: 200.00,
+      data: '18 de mai de 2025',
+      status: 'autorizada'
     }
-    setCarregando(false);
-  }, []);
+  ];
 
-  const getStatusIcon = (status: string) => {
+  const stats = {
+    autorizadas: 1,
+    pendentes: 0,
+    rejeitadas: 0
+  };
+
+  const getStatusColor = (status: NotaFiscal['status']) => {
     switch (status) {
       case 'autorizada':
-        return <Check className="text-success-500" size={20} />;
+        return 'text-success-600 bg-success-50';
       case 'pendente':
-        return <Clock className="text-warning-500" size={20} />;
+        return 'text-warning-600 bg-warning-50';
       case 'rejeitada':
-        return <X className="text-error-500" size={20} />;
-      case 'cancelada':
-        return <FileWarning className="text-neutral-500" size={20} />;
+        return 'text-error-600 bg-error-50';
       default:
-        return <Clock className="text-warning-500" size={20} />;
+        return 'text-neutral-600 bg-neutral-50';
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusIcon = (status: NotaFiscal['status']) => {
     switch (status) {
       case 'autorizada':
-        return 'bg-success-50 text-success-700 border-success-200';
+        return <CheckCircle className="w-4 h-4" />;
       case 'pendente':
-        return 'bg-warning-50 text-warning-700 border-warning-200';
+        return <Clock className="w-4 h-4" />;
       case 'rejeitada':
-        return 'bg-error-50 text-error-700 border-error-200';
-      case 'cancelada':
-        return 'bg-neutral-100 text-neutral-700 border-neutral-200';
+        return <XCircle className="w-4 h-4" />;
       default:
-        return 'bg-warning-50 text-warning-700 border-warning-200';
+        return null;
     }
   };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'autorizada':
-        return 'Autorizada';
-      case 'pendente':
-        return 'Pendente';
-      case 'rejeitada':
-        return 'Rejeitada';
-      case 'cancelada':
-        return 'Cancelada';
-      default:
-        return 'Pendente';
-    }
-  };
-
-  const visualizarDanfe = (nota: NotaFiscal) => {
-    const danfeDataUrl = gerarDANFE(nota);
-    const newWindow = window.open();
-    if (newWindow) {
-      newWindow.document.write(`
-        <html>
-          <head>
-            <title>DANFE - ${nota.numero}</title>
-          </head>
-          <body style="margin:0;padding:0;">
-            <embed width="100%" height="100%" src="${danfeDataUrl}" type="application/pdf" />
-          </body>
-        </html>
-      `);
-    }
-  };
-
-  const notasFiltradas = notas.filter(nota => 
-    nota.numero.includes(filtro) || 
-    nota.destinatario.toLowerCase().includes(filtro.toLowerCase()) ||
-    nota.chave.includes(filtro)
-  );
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-neutral-800">Dashboard</h1>
-        <Link
-          to="/notas/nova"
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md transition-colors"
-        >
-          <FilePlus size={18} />
-          <span>Nova NF-e</span>
-        </Link>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-success-500">
-          <div className="flex items-start justify-between">
+          <div className="flex items-center">
+            <CheckCircle className="w-8 h-8 text-success-500 mr-3" />
             <div>
-              <p className="text-neutral-500 text-sm">Notas Autorizadas</p>
-              <p className="text-2xl font-bold text-neutral-800 mt-2">
-                {notas.filter(n => n.status === 'autorizada').length}
-              </p>
-            </div>
-            <div className="p-3 bg-success-50 rounded-full">
-              <Check className="text-success-500" size={20} />
+              <p className="text-sm font-medium text-neutral-600">Notas Autorizadas</p>
+              <p className="text-2xl font-bold text-neutral-800">{stats.autorizadas}</p>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-warning-500">
-          <div className="flex items-start justify-between">
+          <div className="flex items-center">
+            <Clock className="w-8 h-8 text-warning-500 mr-3" />
             <div>
-              <p className="text-neutral-500 text-sm">Notas Pendentes</p>
-              <p className="text-2xl font-bold text-neutral-800 mt-2">
-                {notas.filter(n => n.status === 'pendente').length}
-              </p>
-            </div>
-            <div className="p-3 bg-warning-50 rounded-full">
-              <Clock className="text-warning-500" size={20} />
+              <p className="text-sm font-medium text-neutral-600">Notas Pendentes</p>
+              <p className="text-2xl font-bold text-neutral-800">{stats.pendentes}</p>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-error-500">
-          <div className="flex items-start justify-between">
+          <div className="flex items-center">
+            <XCircle className="w-8 h-8 text-error-500 mr-3" />
             <div>
-              <p className="text-neutral-500 text-sm">Notas Rejeitadas</p>
-              <p className="text-2xl font-bold text-neutral-800 mt-2">
-                {notas.filter(n => n.status === 'rejeitada').length}
-              </p>
-            </div>
-            <div className="p-3 bg-error-50 rounded-full">
-              <X className="text-error-500" size={20} />
+              <p className="text-sm font-medium text-neutral-600">Notas Rejeitadas</p>
+              <p className="text-2xl font-bold text-neutral-800">{stats.rejeitadas}</p>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Recent Invoices */}
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b border-neutral-200">
-          <h2 className="text-xl font-semibold text-neutral-800">Últimas Notas Fiscais</h2>
-          <div className="mt-4 relative">
+          <h2 className="text-lg font-semibold text-neutral-800">Últimas Notas Fiscais</h2>
+        </div>
+
+        <div className="p-6">
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 w-5 h-5" />
             <input
               type="text"
               placeholder="Buscar por número, destinatário ou chave..."
-              className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" />
           </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          {carregando ? (
-            <div className="p-8 text-center text-neutral-500">Carregando...</div>
-          ) : notasFiltradas.length > 0 ? (
+
+          <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-neutral-50 text-neutral-600 text-sm">
-                <tr>
-                  <th className="py-3 px-4 text-left font-medium">Número</th>
-                  <th className="py-3 px-4 text-left font-medium">Destinatário</th>
-                  <th className="py-3 px-4 text-left font-medium">Valor</th>
-                  <th className="py-3 px-4 text-left font-medium">Data</th>
-                  <th className="py-3 px-4 text-left font-medium">Status</th>
-                  <th className="py-3 px-4 text-right font-medium">Ações</th>
+              <thead>
+                <tr className="border-b border-neutral-200">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">Número</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">Destinatário</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">Valor</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">Data</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">Status</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-neutral-600">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200">
-                {notasFiltradas.map((nota) => (
-                  <tr key={nota.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="py-3 px-4 text-neutral-800 font-medium">{nota.numero}</td>
-                    <td className="py-3 px-4 text-neutral-600">{nota.destinatario}</td>
-                    <td className="py-3 px-4 text-neutral-600">
+              <tbody>
+                {notasFiscais.map((nota) => (
+                  <tr key={nota.numero} className="border-b border-neutral-100 hover:bg-neutral-50">
+                    <td className="py-4 px-4 text-sm text-neutral-800">{nota.numero}</td>
+                    <td className="py-4 px-4 text-sm text-neutral-800">{nota.destinatario}</td>
+                    <td className="py-4 px-4 text-sm text-neutral-800">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(nota.valor)}
                     </td>
-                    <td className="py-3 px-4 text-neutral-600">
-                      {format(new Date(nota.data_emissao), "dd 'de' MMM 'de' yyyy", { locale: ptBR })}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center">
+                    <td className="py-4 px-4 text-sm text-neutral-800">{nota.data}</td>
+                    <td className="py-4 px-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(nota.status)}`}>
                         {getStatusIcon(nota.status)}
-                        <span className={`ml-2 text-sm px-2 py-1 rounded-full border ${getStatusBadge(nota.status)}`}>
-                          {getStatusText(nota.status)}
-                        </span>
-                      </div>
+                        <span className="ml-1 capitalize">{nota.status}</span>
+                      </span>
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => visualizarDanfe(nota)}
-                        className="text-primary-600 hover:text-primary-800 font-medium inline-flex items-center"
+                    <td className="py-4 px-4 text-right">
+                      <Link
+                        to={`/notas/visualizar/${nota.numero}`}
+                        className="inline-flex items-center text-primary-600 hover:text-primary-700 text-sm font-medium"
                       >
-                        <span>Visualizar</span>
-                        <ChevronRight size={16} />
-                      </button>
+                        Visualizar
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Link>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          ) : (
-            <div className="p-8 text-center text-neutral-500">
-              {filtro ? 'Nenhuma nota fiscal encontrada com o filtro aplicado.' : 'Nenhuma nota fiscal emitida ainda.'}
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default Dashboard;
