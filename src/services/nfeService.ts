@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { gerarXmlNFe, assinarXml, gerarLoteNFe, gerarChaveNFe } from '../utils/nfeUtils';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from './supabase';
 
 // Interfaces
 interface Destinatario {
@@ -137,7 +138,6 @@ export async function emitirNFe(notaFiscal: NotaFiscal): Promise<{ status: strin
         IE: notaFiscal.destinatario.inscricaoEstadual?.replace(/\D/g, '') || undefined,
       },
       det: notaFiscal.produtos.map((produto, index) => {
-        // Ensure ICMS, PIS, and COFINS objects exist with default values
         const defaultIcms = {
           cst: '102',
           origem: '0',
@@ -266,22 +266,36 @@ export async function emitirNFe(notaFiscal: NotaFiscal): Promise<{ status: strin
     // Simular autorização bem-sucedida
     const protocolo = Math.floor(Math.random() * 1000000000).toString().padStart(15, '0');
     
-    // Salvar NF-e no localStorage
-    const notas = JSON.parse(localStorage.getItem('notas_fiscais') || '[]');
-    notas.push({
-      id: uuidv4(),
-      numero: notaFiscal.numero,
-      serie: notaFiscal.serie,
-      chave: chaveNFe,
-      xml: xmlAssinado,
-      xml_protocolo: `<protocolo>${protocolo}</protocolo>`,
-      destinatario: notaFiscal.destinatario.nome,
-      valor: notaFiscal.valorTotal,
-      data_emissao: notaFiscal.dataEmissao.toISOString(),
-      status: 'autorizada',
-      protocolo
-    });
-    localStorage.setItem('notas_fiscais', JSON.stringify(notas));
+    // Salvar NF-e no Supabase
+    const { data: emissor } = await supabase
+      .from('emissor')
+      .select('id')
+      .single();
+
+    if (!emissor?.id) {
+      throw new Error('Emissor não encontrado');
+    }
+
+    const { error: insertError } = await supabase
+      .from('notas_fiscais')
+      .insert({
+        emissor_id: emissor.id,
+        numero: notaFiscal.numero,
+        serie: notaFiscal.serie,
+        chave: chaveNFe,
+        xml: xmlAssinado,
+        xml_protocolo: `<protocolo>${protocolo}</protocolo>`,
+        destinatario: notaFiscal.destinatario.nome,
+        valor: notaFiscal.valorTotal,
+        data_emissao: notaFiscal.dataEmissao.toISOString(),
+        data_autorizacao: new Date().toISOString(),
+        status: 'autorizada',
+        protocolo
+      });
+
+    if (insertError) {
+      throw new Error(`Erro ao salvar NF-e: ${insertError.message}`);
+    }
     
     return {
       status: 'autorizada',
@@ -301,8 +315,15 @@ export async function emitirNFe(notaFiscal: NotaFiscal): Promise<{ status: strin
 // Função para consultar status da NF-e
 export async function consultarNFe(chave: string): Promise<any> {
   try {
-    const notas = JSON.parse(localStorage.getItem('notas_fiscais') || '[]');
-    const nota = notas.find((n: any) => n.chave === chave);
+    const { data: nota, error } = await supabase
+      .from('notas_fiscais')
+      .select('*')
+      .eq('chave', chave)
+      .single();
+    
+    if (error) {
+      throw error;
+    }
     
     if (!nota) {
       throw new Error('NF-e não encontrada');
@@ -312,7 +333,7 @@ export async function consultarNFe(chave: string): Promise<any> {
       status: nota.status,
       mensagem: `NF-e ${nota.status}`,
       protocolo: nota.protocolo,
-      data_autorizacao: nota.data_emissao
+      data_autorizacao: nota.data_autorizacao
     };
   } catch (error) {
     console.error('Erro ao consultar NF-e:', error);
