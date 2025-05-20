@@ -1,13 +1,18 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import fxp from 'fast-xml-parser';
+import { XMLParser } from 'fast-xml-parser';
 import QRCode from 'qrcode';
 
 import bwipjs from 'bwip-js';
 
 
 export async function gerarDanfePDF(xml: string): Promise<Uint8Array> {
-    const json = fxp.parse(xml, { ignoreAttributes: false, attributeNamePrefix: '' });
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '',
+  });
+  const json = parser.parse(xml);
+
   const nfe = json.NFe?.infNFe || json['nfeProc']?.NFe?.infNFe;
   const supl = json['nfeProc']?.NFe?.infNFeSupl || json.NFe?.infNFeSupl;
 
