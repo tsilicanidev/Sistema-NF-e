@@ -133,7 +133,6 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
 
     // Define os algoritmos ANTES de adicionar a referência
     sig.signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
-    sig.digestAlgorithm = "http://www.w3.org/2000/09/xmldsig#sha1";
     sig.canonicalizationAlgorithm = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
     sig.signingKey = privateKey;
 
