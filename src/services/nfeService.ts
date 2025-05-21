@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { gerarXmlNFe, assinarXml, gerarLoteNFe, gerarChaveNFe } from '../utils/nfeUtils';
+import { gerarDanfePDF } from './danfeService';
+import { salvarDanfeNoStorage } from './danfeStorage';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from './supabase';
 
@@ -275,6 +277,10 @@ export async function emitirNFe(notaFiscal: NotaFiscal, certificate: Certificate
       password: certificate.password
     });
     
+    
+    const pdfBuffer = await gerarDanfePDF(xmlAssinado);
+    const pdfUrl = await salvarDanfeNoStorage(chaveNFe, pdfBuffer);
+
     // Gerar lote de envio
     const idLote = Date.now().toString();
     const xmlLote = gerarLoteNFe(xmlAssinado, idLote);
@@ -306,6 +312,7 @@ export async function emitirNFe(notaFiscal: NotaFiscal, certificate: Certificate
         data_emissao: notaFiscal.dataEmissao.toISOString(),
         data_autorizacao: new Date().toISOString(),
         status: 'autorizada',
+        danfe_url: pdfUrl,
         protocolo
       });
 
@@ -315,6 +322,7 @@ export async function emitirNFe(notaFiscal: NotaFiscal, certificate: Certificate
     
     return {
       status: 'autorizada',
+        danfe_url: pdfUrl,
       mensagem: 'NF-e autorizada com sucesso',
       chave: chaveNFe,
       protocolo

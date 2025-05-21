@@ -6,6 +6,7 @@ import { useEmissor } from '../contexts/EmissorContext';
 import { useCertificado } from '../contexts/CertificadoContext';
 import { useNotificacao } from '../contexts/NotificacaoContext';
 import { emitirNFe } from '../services/nfeService';
+import { gerarDanfePDF } from '../services/danfeService';
 import { useNavigate } from 'react-router-dom';
 
 interface NotaFiscalFormData {

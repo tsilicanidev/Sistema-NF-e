@@ -1,35 +1,69 @@
+
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { parse } from 'fast-xml-parser';
+import { XMLParser } from 'fast-xml-parser';
 import QRCode from 'qrcode';
 import bwipjs from 'bwip-js';
 
-export async function gerarDANFE(xml: string): Promise<Uint8Array> {
-    const json = parse(xml, { ignoreAttributes: false, attributeNamePrefix: '' });
+export async function gerarDanfePDF(xml: string): Promise<Uint8Array> {
+  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
+  const json = parser.parse(xml);
+
   const nfe = json.NFe?.infNFe || json['nfeProc']?.NFe?.infNFe;
   const supl = json['nfeProc']?.NFe?.infNFeSupl || json.NFe?.infNFeSupl;
 
-  if (!nfe) throw new Error('Não foi possível extrair os dados da NF-e');
+  if (!nfe) throw new Error('XML da NF-e inválido');
 
-  const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text('DANFE - Documento Auxiliar da NF-e', 20, 20);
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const chave = nfe.Id?.replace(/^NFe/, '') || '';
 
-  doc.setFontSize(12);
-  doc.text(`Emitente: ${nfe.emit?.xNome}`, 20, 40);
-  doc.text(`Destinatário: ${nfe.dest?.xNome}`, 20, 50);
-  doc.text(`Chave de Acesso: ${nfe.Id?.replace(/^NFe/, '')}`, 20, 60);
-  doc.text(`Número: ${nfe.ide?.nNF} Série: ${nfe.ide?.serie}`, 20, 70);
-  doc.text(`Data de Emissão: ${nfe.ide?.dhEmi}`, 20, 80);
-  doc.text(`Valor Total: R$ ${nfe.total?.ICMSTot?.vNF}`, 20, 90);
-  doc.text(`CFOP: ${nfe.det?.[0]?.prod?.CFOP || nfe.det?.prod?.CFOP || ''}`, 20, 100);
-
-  if (nfe.transp) {
-    doc.text('Transportadora:', 20, 110);
-    doc.text(`Nome: ${nfe.transp.transporta?.xNome || '---'}`, 25, 120);
-    doc.text(`Placa: ${nfe.transp.veicTransp?.placa || '---'} UF: ${nfe.transp.veicTransp?.UF || ''}`, 25, 130);
+  // Cabeçalho com logotipo
+  try {
+    const logoImg = await fetch('/logo.png').then(res => res.blob()).then(blob => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    });
+    doc.addImage(logoImg, 'PNG', 10, 10, 30, 20); // logo no canto superior esquerdo
+  } catch (e) {
+    console.warn('Logo da empresa não encontrado, ignorando...');
   }
 
+  // Cabeçalho
+  doc.setFontSize(12);
+  doc.text('DANFE', 10, 10);
+  doc.setFontSize(9);
+  doc.text('Documento Auxiliar da Nota Fiscal Eletrônica', 10, 14);
+
+  doc.setFontSize(10);
+  doc.text(`Nº: ${nfe.ide?.nNF}  Série: ${nfe.ide?.serie}  Emissão: ${nfe.ide?.dhEmi}`, 10, 22);
+  doc.text(`Emitente: ${nfe.emit?.xNome}`, 10, 28);
+  doc.text(`CNPJ: ${nfe.emit?.CNPJ}`, 10, 33);
+
+  // Destinatário
+  doc.text(`Destinatário: ${nfe.dest?.xNome}`, 10, 42);
+  const docDest = nfe.dest?.CNPJ || nfe.dest?.CPF || '';
+  doc.text(`Documento: ${docDest}`, 10, 47);
+  doc.text(`Endereço: ${nfe.dest?.enderDest?.xLgr}, ${nfe.dest?.enderDest?.nro}`, 10, 52);
+  doc.text(`${nfe.dest?.enderDest?.xMun} - ${nfe.dest?.enderDest?.UF} - CEP: ${nfe.dest?.enderDest?.CEP}`, 10, 57);
+
+  // Chave de acesso
+  doc.setFontSize(10);
+  const chaveFormatada = chave.replace(/(\d{4})(?=.)/g, '$1 ');
+  doc.text('Chave de Acesso:', 10, 65);
+  doc.setFont('Courier', 'bold');
+  doc.text(chaveFormatada, 10, 70);
+  doc.setFont('helvetica');
+
+  // QRCode
+  if (supl?.qrCode) {
+    const qrDataUrl = await QRCode.toDataURL(supl.qrCode);
+    doc.addImage(qrDataUrl, 'PNG', 160, 10, 40, 40);
+  }
+
+  // Produtos
   const produtos = Array.isArray(nfe.det) ? nfe.det : [nfe.det];
   const produtoRows = produtos.map((item: any) => {
     const prod = item.prod;
@@ -46,47 +80,33 @@ export async function gerarDANFE(xml: string): Promise<Uint8Array> {
   doc.autoTable({
     head: [['Código', 'Descrição', 'Qtd', 'Unid', 'V. Unit', 'V. Total']],
     body: produtoRows,
-    startY: 140,
+    startY: 80,
     theme: 'grid',
-    styles: { fontSize: 10 }
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [200, 200, 200] }
   });
 
-  const finalY = doc.lastAutoTable.finalY;
-  doc.text(`Base ICMS: R$ ${nfe.total?.ICMSTot?.vBC || '0,00'}`, 20, finalY + 10);
-  doc.text(`ICMS: R$ ${nfe.total?.ICMSTot?.vICMS || '0,00'}`, 80, finalY + 10);
-  doc.text(`Frete: R$ ${nfe.total?.ICMSTot?.vFrete || '0,00'}`, 140, finalY + 10);
-  doc.text(`Outros: R$ ${nfe.total?.ICMSTot?.vOutro || '0,00'}`, 20, finalY + 20);
-  doc.text(`IPI: R$ ${nfe.total?.ICMSTot?.vIPI || '0,00'}`, 80, finalY + 20);
+  const yEnd = doc.lastAutoTable.finalY;
 
-  if (nfe.cobr?.fat) {
-    doc.text(`Fatura: Nº ${nfe.cobr.fat.nFat} - Valor Original: R$ ${nfe.cobr.fat.vOrig}`, 20, finalY + 30);
-  }
+  // Totais
+  doc.setFontSize(10);
+  doc.text(`Valor Total da Nota: R$ ${nfe.total?.ICMSTot?.vNF}`, 10, yEnd + 10);
+  doc.text(`Base ICMS: R$ ${nfe.total?.ICMSTot?.vBC}`, 10, yEnd + 16);
+  doc.text(`ICMS: R$ ${nfe.total?.ICMSTot?.vICMS}`, 80, yEnd + 16);
+  doc.text(`Frete: R$ ${nfe.total?.ICMSTot?.vFrete}`, 10, yEnd + 22);
+  doc.text(`IPI: R$ ${nfe.total?.ICMSTot?.vIPI}`, 80, yEnd + 22);
 
-  if (nfe.pag?.detPag) {
-    const pagamentos = Array.isArray(nfe.pag.detPag) ? nfe.pag.detPag : [nfe.pag.detPag];
-    let y = finalY + 40;
-    doc.text('Pagamentos:', 20, y);
-    pagamentos.forEach((p: any, index: number) => {
-      y += 10;
-      doc.text(`Forma: ${p.tPag} - Valor: R$ ${p.vPag}`, 25, y);
-    });
-  }
-
+  // Informações adicionais
   if (nfe.infAdic?.infCpl) {
-    doc.text('Informações Complementares:', 20, doc.internal.pageSize.height - 40);
-    doc.text(nfe.infAdic.infCpl, 20, doc.internal.pageSize.height - 30);
+    doc.text('Informações Complementares:', 10, yEnd + 32);
+    doc.text(nfe.infAdic.infCpl, 10, yEnd + 38);
   }
 
-  if (supl?.qrCode) {
-    const qrDataUrl = await QRCode.toDataURL(supl.qrCode);
-    doc.addImage(qrDataUrl, 'PNG', 150, 20, 40, 40);
-  }
-
-  const chave = nfe.Id?.replace(/^NFe/, '');
+  // Código de barras
   if (chave) {
     const barcodeBuffer = await bwipjs.toBuffer({ bcid: 'code128', text: chave, scale: 2, height: 10 });
     const barcodeDataUrl = 'data:image/png;base64,' + barcodeBuffer.toString('base64');
-    doc.addImage(barcodeDataUrl, 'PNG', 20, doc.internal.pageSize.height - 20, 170, 20);
+    doc.addImage(barcodeDataUrl, 'PNG', 10, 290, 190, 15);
   }
 
   return doc.output('arraybuffer');
