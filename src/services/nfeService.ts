@@ -63,9 +63,22 @@ interface NotaFiscal {
   valorTotal: number;
 }
 
+interface Certificate {
+  pfxBase64: string;
+  password: string;
+}
+
 // Função para emitir NF-e
-export async function emitirNFe(notaFiscal: NotaFiscal): Promise<{ status: string; mensagem: string; chave?: string; protocolo?: string }> {
+export async function emitirNFe(notaFiscal: NotaFiscal, certificate: Certificate): Promise<{ status: string; mensagem: string; chave?: string; protocolo?: string }> {
   try {
+    // Validação do certificado
+    if (!certificate?.pfxBase64) {
+      throw new Error('Arquivo do certificado digital não fornecido');
+    }
+    if (!certificate?.password) {
+      throw new Error('Senha do certificado digital não fornecida');
+    }
+
     // Gerar chave da NF-e
     const anoMes = new Date().toISOString().substring(0, 7).replace('-', '');
     const chaveNFe = gerarChaveNFe(
@@ -257,7 +270,10 @@ export async function emitirNFe(notaFiscal: NotaFiscal): Promise<{ status: strin
     const xmlNFe = gerarXmlNFe(infNFe, chaveNFe);
     
     // Assinar XML com certificado digital
-    const xmlAssinado = assinarXml(xmlNFe, '/cert/certificado.pfx', 'Casa090618');
+    const xmlAssinado = assinarXml(xmlNFe, {
+      pfxBase64: certificate.pfxBase64,
+      password: certificate.password
+    });
     
     // Gerar lote de envio
     const idLote = Date.now().toString();

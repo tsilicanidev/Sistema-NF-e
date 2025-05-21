@@ -16,6 +16,8 @@ interface ImportMetaEnv {
   readonly VITE_EMISSOR_ENDERECO_CEP: string
   readonly VITE_EMISSOR_ENDERECO_COD_PAIS: string
   readonly VITE_EMISSOR_ENDERECO_PAIS: string
+  readonly VITE_CERTIFICADO_BASE64: string
+  readonly VITE_CERTIFICADO_SENHA: string
 }
 
 interface ImportMeta {

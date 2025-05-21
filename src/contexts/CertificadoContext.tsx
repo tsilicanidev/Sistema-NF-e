@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNotificacao } from './NotificacaoContext';
-import { supabase } from '../services/supabase';
-import fs from 'node:fs/promises';
 
 export interface Certificado {
   id: string;
@@ -34,19 +32,26 @@ export const CertificadoProvider: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     async function carregarCertificado() {
       try {
-        // Carregar certificado do arquivo
+        const certBase64 = import.meta.env.VITE_CERTIFICADO_BASE64;
+        const certSenha = import.meta.env.VITE_CERTIFICADO_SENHA;
+
+        if (!certBase64 || !certSenha) {
+          throw new Error('Certificado digital não configurado no arquivo .env');
+        }
+
+        // Criar certificado com dados do .env
         const certificadoFixo: Certificado = {
           id: '1',
-          nome: 'Certificado Padrão',
-          arquivo: '/cert/certificado.pfx',
-          senha: 'Casa090618',
-          validade: new Date('2025-12-31') // Data exemplo, em produção seria obtida do certificado
+          nome: 'Certificado Principal',
+          arquivo: certBase64,
+          senha: certSenha,
+          validade: new Date('2025-12-31') // Em produção, extrair do certificado
         };
         
         setCertificado(certificadoFixo);
       } catch (error) {
         console.error('Erro ao carregar certificado:', error);
-        adicionarNotificacao('erro', 'Erro ao carregar certificado');
+        adicionarNotificacao('erro', error instanceof Error ? error.message : 'Erro ao carregar certificado');
       } finally {
         setCarregando(false);
       }

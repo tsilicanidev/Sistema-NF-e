@@ -2,7 +2,6 @@ import { create } from 'xmlbuilder2';
 import { SignedXml } from 'xml-crypto';
 import { DOMParser } from '@xmldom/xmldom';
 import * as forge from 'node-forge';
-import { readFileSync } from 'fs';
 
 interface InfNFe {
   ide: { cUF: string; cNF: string; natOp: string; mod: string; serie: string; nNF: string; dhEmi: string; tpNF: string; idDest: string; cMunFG: string; tpImp: string; tpEmis: string; cDV: string; tpAmb: string; finNFe: string; indFinal: string; indPres: string; procEmi: string; verProc: string; };
@@ -57,24 +56,53 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
   }
 
   try {
+    // Remove possíveis caracteres inválidos do base64
+    const cleanBase64 = certificateData.pfxBase64.replace(/[\r\n\s]/g, '');
+    
+    // Verifica se é um base64 válido
+    if (!isValidBase64(cleanBase64)) {
+      throw new Error('Certificado digital inválido: string base64 malformada');
+    }
+
     // Decodifica o certificado base64
-    const pfxBinary = forge.util.decode64(certificateData.pfxBase64);
+    let pfxBinary;
+    try {
+      pfxBinary = forge.util.decode64(cleanBase64);
+    } catch (error) {
+      throw new Error(`Erro ao decodificar certificado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
     
     // Converte para ASN.1
-    const pfxAsn1 = forge.asn1.fromDer(pfxBinary);
+    let pfxAsn1;
+    try {
+      pfxAsn1 = forge.asn1.fromDer(pfxBinary);
+    } catch (error) {
+      throw new Error(`Erro ao converter certificado para ASN.1: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
     
     // Extrai o PKCS#12
-    const pfx = forge.pkcs12.pkcs12FromAsn1(pfxAsn1, false, certificateData.password);
+    let pfx;
+    try {
+      pfx = forge.pkcs12.pkcs12FromAsn1(pfxAsn1, false, certificateData.password);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Invalid password')) {
+        throw new Error('Senha do certificado incorreta');
+      }
+      throw new Error(`Erro ao processar certificado PKCS#12: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
 
-    // Obtém a chave privada e o certificado
+    // Obtém a chave privada
     const bags = pfx.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
-    const keyBag = bags[forge.pki.oids.pkcs8ShroudedKeyBag][0];
+    const keyBag = bags[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0];
+    if (!keyBag?.key) {
+      throw new Error('Chave privada não encontrada no certificado');
+    }
 
+    // Obtém o certificado
     const certBags = pfx.getBags({ bagType: forge.pki.oids.certBag });
-    const certBag = certBags[forge.pki.oids.certBag][0];
-
-    if (!keyBag || !certBag) {
-      throw new Error('Não foi possível extrair a chave privada ou o certificado');
+    const certBag = certBags[forge.pki.oids.certBag]?.[0];
+    if (!certBag?.cert) {
+      throw new Error('Certificado não encontrado no arquivo PFX');
     }
 
     const privateKey = forge.pki.privateKeyToPem(keyBag.key);
@@ -101,20 +129,27 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
 
     // Configura a assinatura XML
     const sig = new SignedXml();
-    sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
+    sig.signingKey = privateKey;
+
+    // Define os algoritmos de assinatura
+    sig.signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+    sig.digestAlgorithm = "http://www.w3.org/2000/09/xmldsig#sha1";
+    sig.canonicalizationAlgorithm = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
+
+    // Configura o provedor de informações da chave
+    sig.keyInfoProvider = {
+      getKeyInfo: () => `<X509Data><X509Certificate>${cleanCertificate}</X509Certificate></X509Data>`
+    };
+
+    // Adiciona a referência após configurar os algoritmos
     sig.addReference(
       `//*[local-name(.)='infNFe' and @Id='${id}']`,
       [
         'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
         'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
       ],
-      'http://www.w3.org/2000/09/xmldsig#sha1'
+      sig.digestAlgorithm // Usa o mesmo algoritmo de digest configurado anteriormente
     );
-
-    sig.signingKey = privateKey;
-    sig.keyInfoProvider = {
-      getKeyInfo: () => `<X509Data><X509Certificate>${cleanCertificate}</X509Certificate></X509Data>`
-    };
 
     sig.computeSignature(xml);
     return sig.getSignedXml();
@@ -126,4 +161,27 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
 
 export function gerarLoteNFe(xmlNFe: string, idLote: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">\n  <idLote>${idLote}</idLote>\n  <indSinc>1</indSinc>\n  ${xmlNFe}\n</enviNFe>`;
+}
+
+// Função auxiliar para validar string base64
+function isValidBase64(str: string): boolean {
+  try {
+    // Verifica se a string tem um comprimento válido para base64
+    if (str.length % 4 !== 0) {
+      return false;
+    }
+
+    // Verifica se a string contém apenas caracteres base64 válidos
+    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+    if (!base64Regex.test(str)) {
+      return false;
+    }
+
+    // Tenta decodificar e recodificar para verificar se é um base64 válido
+    const decoded = atob(str);
+    const encoded = btoa(decoded);
+    return encoded === str;
+  } catch {
+    return false;
+  }
 }

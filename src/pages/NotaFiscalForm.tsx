@@ -111,14 +111,10 @@ const NotaFiscalForm: React.FC = () => {
         informacoesAdicionais: data.informacoesAdicionais
       };
 
-      const resultado = await emitirNFe(
-        notaFiscal,
-        emissor.id,
-        {
-          pfxBase64: certificado.arquivo,
-          password: certificado.senha
-        }
-      );
+      const resultado = await emitirNFe(notaFiscal, {
+        pfxBase64: certificado.arquivo,
+        password: certificado.senha
+      });
 
       if (resultado.status === 'autorizada') {
         adicionarNotificacao('sucesso', 'NF-e emitida com sucesso');
