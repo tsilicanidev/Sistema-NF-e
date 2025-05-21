@@ -75,27 +75,31 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
     const id = infNFeElement.getAttribute('Id');
     if (!id) throw new Error('Atributo Id não encontrado no elemento infNFe');
 
-    const sig = new SignedXml();
-    sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
-    sig.digestAlgorithm = 'http://www.w3.org/2000/09/xmldsig#sha1';
-    sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
-    sig.signingKey = privateKey;
+    // Configura a assinatura XML
+const sig = new SignedXml();
 
-    sig.keyInfoProvider = {
-      getKeyInfo: () => `<X509Data><X509Certificate>${certificate}</X509Certificate></X509Data>`
-    };
+// Ordem é importante
+sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
+sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
+sig.signingKey = privateKey;
 
-    sig.addReference(
-      `//*[local-name(.)='infNFe' and @Id='${id}']`,
-      [
-        'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
-        'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
-      ],
-      'http://www.w3.org/2000/09/xmldsig#sha1'
-    );
+sig.keyInfoProvider = {
+  getKeyInfo: () => `<X509Data><X509Certificate>${cleanCertificate}</X509Certificate></X509Data>`,
+};
 
-    sig.computeSignature(xml);
-    return sig.getSignedXml();
+// ✅ AQUI: digestAlgorithm vai como terceiro argumento (não como propriedade do objeto)
+sig.addReference(
+  `//*[local-name(.)='infNFe' and @Id='${id}']`,
+  [
+    'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+    'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
+  ],
+  'http://www.w3.org/2000/09/xmldsig#sha1'
+);
+
+// Assina o XML
+sig.computeSignature(xml);
+return sig.getSignedXml();
   } catch (error) {
     console.error('Erro ao assinar XML:', error);
     throw new Error(`Falha ao assinar o XML da NF-e: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
