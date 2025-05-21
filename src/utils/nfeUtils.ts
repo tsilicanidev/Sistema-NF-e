@@ -148,7 +148,7 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
         'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
         'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
       ],
-      sig.digestAlgorithm // Usa o mesmo algoritmo de digest configurado anteriormente
+      'http://www.w3.org/2000/09/xmldsig#sha1' // Usa o mesmo algoritmo de digest configurado anteriormente
     );
 
     sig.computeSignature(xml);
