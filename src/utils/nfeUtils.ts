@@ -129,30 +129,30 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
     }
 
     // Configura a assinatura XML
-    const sig = new SignedXml();
+const sig = new SignedXml();
 
-    // Define os algoritmos ANTES de adicionar a referência
-    sig.signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
-    sig.canonicalizationAlgorithm = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
-    sig.signingKey = privateKey;
+sig.signingKey = privateKey;
+sig.signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
+sig.canonicalizationAlgorithm = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
 
-    // Configura o provedor de informações da chave
-    sig.keyInfoProvider = {
-      getKeyInfo: () => `<X509Data><X509Certificate>${cleanCertificate}</X509Certificate></X509Data>`
-    };
-
-    // Adiciona a referência DEPOIS de configurar os algoritmos
-    sig.addReference(
+// ⚠️ NÃO use sig.digestAlgorithm = "..."
+// ✅ Passe o algoritmo SHA1 diretamente na função abaixo
+sig.addReference(
   `//*[local-name(.)='infNFe' and @Id='${id}']`,
   [
     'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
     'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
   ],
-  'http://www.w3.org/2000/09/xmldsig#sha1' // ✅ deve estar assim
+  'http://www.w3.org/2000/09/xmldsig#sha1' // ✅ OBRIGATÓRIO
 );
 
-    sig.computeSignature(xml);
-    return sig.getSignedXml();
+// Chave pública no cabeçalho
+sig.keyInfoProvider = {
+  getKeyInfo: () => `<X509Data><X509Certificate>${cleanCertificate}</X509Certificate></X509Data>`
+};
+
+sig.computeSignature(xml);
+return sig.getSignedXml();
   } catch (error) {
     console.error('Erro ao assinar XML:', error);
     throw new Error(`Falha ao assinar o XML da NF-e: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
