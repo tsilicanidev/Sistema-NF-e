@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { gerarDanfePDF } from '@/services/danfeService';
-
+import { gerarDanfePDF } from '../pages/api/lib/danfeService';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
