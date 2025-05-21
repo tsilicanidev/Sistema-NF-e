@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { gerarXmlNFe, assinarXml, gerarLoteNFe, gerarChaveNFe } from '../utils/nfeUtils';
-import { validarXmlNFe } from '../pages/api/validadorXml';
+import { validarXmlNFe } from '../pages/api/validarXml';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from './supabase';
 
@@ -99,10 +99,16 @@ export async function emitirNFe(notaFiscal: NotaFiscal, certificate: Certificate
       password: certificate.password
     });
 
-    const validacao = validarXmlNFe(xmlAssinado);
-    if (!validacao.valido) {
-      throw new Error(`XML inválido: ${validacao.erros?.join('; ')}`);
-    }
+const response = await fetch('/api/validarXml', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ xml: xmlAssinado })
+});
+const validacao = await response.json();
+
+if (!validacao.valido) {
+  throw new Error(`XML inválido: ${validacao.erros?.join('; ')}`);
+}
 
     const idLote = Date.now().toString();
     const xmlLote = gerarLoteNFe(xmlAssinado, idLote);
