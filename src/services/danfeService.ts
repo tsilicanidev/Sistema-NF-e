@@ -1,4 +1,3 @@
-
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { XMLParser } from 'fast-xml-parser';
@@ -26,7 +25,7 @@ export async function gerarDanfePDF(xml: string): Promise<Uint8Array> {
         reader.readAsDataURL(blob);
       });
     });
-    doc.addImage(logoImg, 'PNG', 10, 10, 30, 20); // logo no canto superior esquerdo
+    doc.addImage(logoImg, 'PNG', 10, 10, 30, 20);
   } catch (e) {
     console.warn('Logo da empresa não encontrado, ignorando...');
   }
@@ -111,3 +110,6 @@ export async function gerarDanfePDF(xml: string): Promise<Uint8Array> {
 
   return doc.output('arraybuffer');
 }
+
+// ✅ Exportação adicional para compatibilidade
+export { gerarDanfePDF as gerarDANFE };
