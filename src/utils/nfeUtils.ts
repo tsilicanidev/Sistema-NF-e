@@ -47,6 +47,7 @@ interface CertificateData {
 }
 
 export function assinarXml(xml: string, certificateData: CertificateData): string {
+  console.log('🔥 assinatura ativa')
   if (!certificateData?.pfxBase64) {
     throw new Error('Certificado digital não fornecido');
   }
@@ -129,27 +130,27 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
 
     // Configura a assinatura XML
     const sig = new SignedXml();
-    sig.signingKey = privateKey;
 
-    // Define os algoritmos de assinatura
+    // Define os algoritmos ANTES de adicionar a referência
     sig.signatureAlgorithm = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
     sig.digestAlgorithm = "http://www.w3.org/2000/09/xmldsig#sha1";
     sig.canonicalizationAlgorithm = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
+    sig.signingKey = privateKey;
 
     // Configura o provedor de informações da chave
     sig.keyInfoProvider = {
       getKeyInfo: () => `<X509Data><X509Certificate>${cleanCertificate}</X509Certificate></X509Data>`
     };
 
-    // Adiciona a referência após configurar os algoritmos
+    // Adiciona a referência DEPOIS de configurar os algoritmos
     sig.addReference(
-      `//*[local-name(.)='infNFe' and @Id='${id}']`,
-      [
-        'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
-        'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
-      ],
-      'http://www.w3.org/2000/09/xmldsig#sha1' // Usa o mesmo algoritmo de digest configurado anteriormente
-    );
+  `//*[local-name(.)='infNFe' and @Id='${id}']`,
+  [
+    'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+    'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
+  ],
+  'http://www.w3.org/2000/09/xmldsig#sha1' // ✅ deve estar assim
+);
 
     sig.computeSignature(xml);
     return sig.getSignedXml();
