@@ -78,26 +78,27 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
     // Configura a assinatura XML
 const sig = new SignedXml();
 
-// Ordem é importante
+// Ordem correta das propriedades
 sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
 sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
 sig.signingKey = privateKey;
 
+// Informações do certificado
 sig.keyInfoProvider = {
   getKeyInfo: () => `<X509Data><X509Certificate>${cleanCertificate}</X509Certificate></X509Data>`,
 };
 
-// ✅ AQUI: digestAlgorithm vai como terceiro argumento (não como propriedade do objeto)
+// ✅ digestAlgorithm deve estar aqui — como terceiro argumento:
 sig.addReference(
   `//*[local-name(.)='infNFe' and @Id='${id}']`,
   [
     'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
     'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
   ],
-  'http://www.w3.org/2000/09/xmldsig#sha1'
+  'http://www.w3.org/2000/09/xmldsig#sha1' // <-- CORRETO AQUI
 );
 
-// Assina o XML
+// Gera a assinatura
 sig.computeSignature(xml);
 return sig.getSignedXml();
   } catch (error) {
