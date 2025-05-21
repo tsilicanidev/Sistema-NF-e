@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { FileText, Download, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
-import { gerarDANFE } from './api/lib/danfeService';
-import { gerarDanfePDF } from './api/lib/danfeService'; // ✅ CORRETO
+import { gerarDANFE } from '../services/danfeService';
+import { gerarDanfePDF } from '../services/danfeService'; // ✅ CORRETO
 
 
 interface NotaFiscal {

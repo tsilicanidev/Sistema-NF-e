@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { gerarXmlNFe, assinarXml, gerarLoteNFe, gerarChaveNFe } from '../utils/nfeUtils';
-import { gerarDanfePDF } from '../pages/api/lib/danfeService';
+import { gerarDanfePDF } from './danfeService';
 import { salvarDanfeNoStorage } from './danfeStorage';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from './supabase';
