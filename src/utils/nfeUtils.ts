@@ -2,6 +2,7 @@ import { create } from 'xmlbuilder2';
 import { SignedXml } from 'xml-crypto';
 import { DOMParser } from '@xmldom/xmldom';
 import * as forge from 'node-forge';
+import { readFileSync } from 'fs';
 
 interface InfNFe {
   ide: { cUF: string; cNF: string; natOp: string; mod: string; serie: string; nNF: string; dhEmi: string; tpNF: string; idDest: string; cMunFG: string; tpImp: string; tpEmis: string; cDV: string; tpAmb: string; finNFe: string; indFinal: string; indPres: string; procEmi: string; verProc: string; };
