@@ -4,6 +4,8 @@ import { FileText, Download, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import { gerarDANFE } from './api/lib/danfeService';
+import { gerarDanfePDF } from './api/lib/danfeService'; // ✅ CORRETO
+
 
 interface NotaFiscal {
   numero: string;
