@@ -75,31 +75,26 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
     const id = infNFeElement.getAttribute('Id');
     if (!id) throw new Error('Atributo Id não encontrado no elemento infNFe');
 
-    // Configura a assinatura XML
-const sig = new SignedXml();
+    const sig = new SignedXml();
+    sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
+    sig.digestAlgorithm = 'http://www.w3.org/2000/09/xmldsig#sha1';
+    sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
+    sig.signingKey = privateKey;
 
-// Ordem correta das propriedades
-sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
-sig.digestAlgorithm = 'http://www.w3.org/2000/09/xmldsig#sha1'; // <-- definindo aqui!
-sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
-sig.signingKey = privateKey;
+    sig.keyInfoProvider = {
+      getKeyInfo: () => `<X509Data><X509Certificate>${certificate}</X509Certificate></X509Data>`
+    };
 
-sig.keyInfoProvider = {
-  getKeyInfo: () => `<X509Data><X509Certificate>${certificate}</X509Certificate></X509Data>`,
-};
+    sig.addReference(
+      `//*[local-name(.)='infNFe' and @Id='${id}']`,
+      [
+        'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+        'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
+      ]
+    );
 
-sig.addReference(
-  `//*[local-name(.)='infNFe' and @Id='${id}']`,
-  [
-    'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
-    'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
-  ]
-  // ❌ remova o digestAlgorithm daqui — isso só funciona em versões futuras
-);
-
-// Gera a assinatura
-sig.computeSignature(xml);
-return sig.getSignedXml();
+    sig.computeSignature(xml);
+    return sig.getSignedXml();
   } catch (error) {
     console.error('Erro ao assinar XML:', error);
     throw new Error(`Falha ao assinar o XML da NF-e: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
