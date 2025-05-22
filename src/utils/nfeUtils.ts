@@ -75,17 +75,15 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
     const id = infNFeElement.getAttribute('Id');
     if (!id) throw new Error('Atributo Id não encontrado no elemento infNFe');
 
-    // Create SignedXml instance first
     const sig = new SignedXml();
+
+    sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
+    sig.digestAlgorithm = 'http://www.w3.org/2000/09/xmldsig#sha1'; // ESSENCIAL
+    sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
     sig.signingKey = privateKey;
 
-    // Define algorithms
-    sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
-    sig.digestAlgorithm = 'http://www.w3.org/2000/09/xmldsig#sha1';
-    sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
-
     sig.keyInfoProvider = {
-      getKeyInfo: () => `<X509Data><X509Certificate>${certificate}</X509Certificate></X509Data>`
+      getKeyInfo: () => `<X509Data><X509Certificate>${certificate}</X509Certificate></X509Data>`,
     };
 
     sig.addReference(
@@ -93,26 +91,16 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
       [
         'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
         'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
-      ],
-      'http://www.w3.org/2000/09/xmldsig#sha1',
-      '',
-      '',
-      '',
-      true
+      ]
     );
 
-    sig.computeSignature(xml, {
-      prefix: 'ds',
-      location: { reference: "//*[local-name(.)='infNFe']", action: "after" }
-    });
-
+    sig.computeSignature(xml);
     return sig.getSignedXml();
   } catch (error) {
     console.error('Erro ao assinar XML:', error);
     throw new Error(`Falha ao assinar o XML da NF-e: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
   }
 }
-
 export function gerarLoteNFe(xmlNFe: string, idLote: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">\n  <idLote>${idLote}</idLote>\n  <indSinc>1</indSinc>\n  ${xmlNFe}\n</enviNFe>`;
 }
