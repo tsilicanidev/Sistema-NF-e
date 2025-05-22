@@ -76,9 +76,17 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
     if (!id) throw new Error('Atributo Id não encontrado no elemento infNFe');
 
     const sig = new SignedXml();
-    sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
-    sig.digestAlgorithm = 'http://www.w3.org/2000/09/xmldsig#sha1';
-    sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
+
+    // Set all required algorithms before any operations
+    const ALGORITHMS = {
+      signature: 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
+      digest: 'http://www.w3.org/2000/09/xmldsig#sha1',
+      canonicalization: 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
+    };
+
+    sig.signatureAlgorithm = ALGORITHMS.signature;
+    sig.digestAlgorithm = ALGORITHMS.digest;
+    sig.canonicalizationAlgorithm = ALGORITHMS.canonicalization;
     sig.signingKey = privateKey;
 
     sig.keyInfoProvider = {
@@ -91,7 +99,7 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
         'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
         'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
       ],
-      'http://www.w3.org/2000/09/xmldsig#sha1'  // Added digestAlgorithm parameter to addReference
+      ALGORITHMS.digest
     );
 
     sig.computeSignature(xml);
