@@ -77,13 +77,14 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
 
     const sig = new SignedXml();
 
-    // Set all required algorithms before any operations
+    // Define algorithms before creating the signature object
     const ALGORITHMS = {
       signature: 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
       digest: 'http://www.w3.org/2000/09/xmldsig#sha1',
       canonicalization: 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
     };
 
+    // Set the algorithms before any signing operations
     sig.signatureAlgorithm = ALGORITHMS.signature;
     sig.digestAlgorithm = ALGORITHMS.digest;
     sig.canonicalizationAlgorithm = ALGORITHMS.canonicalization;
@@ -97,12 +98,20 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
       `//*[local-name(.)='infNFe' and @Id='${id}']`,
       [
         'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
-        'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
+        ALGORITHMS.canonicalization
       ],
-      ALGORITHMS.digest
+      ALGORITHMS.digest,
+      '',
+      '',
+      '',
+      true
     );
 
-    sig.computeSignature(xml);
+    sig.computeSignature(xml, {
+      prefix: 'ds',
+      location: { reference: "//*[local-name(.)='infNFe']", action: "after" }
+    });
+
     return sig.getSignedXml();
   } catch (error) {
     console.error('Erro ao assinar XML:', error);
