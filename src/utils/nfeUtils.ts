@@ -75,20 +75,14 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
     const id = infNFeElement.getAttribute('Id');
     if (!id) throw new Error('Atributo Id não encontrado no elemento infNFe');
 
+    // Create SignedXml instance first
     const sig = new SignedXml();
-
-    // Define algorithms before creating the signature object
-    const ALGORITHMS = {
-      signature: 'http://www.w3.org/2000/09/xmldsig#rsa-sha1',
-      digest: 'http://www.w3.org/2000/09/xmldsig#sha1',
-      canonicalization: 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
-    };
-
-    // Set the algorithms before any signing operations
-    sig.signatureAlgorithm = ALGORITHMS.signature;
-    sig.digestAlgorithm = ALGORITHMS.digest;
-    sig.canonicalizationAlgorithm = ALGORITHMS.canonicalization;
     sig.signingKey = privateKey;
+
+    // Define algorithms
+    sig.signatureAlgorithm = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
+    sig.digestAlgorithm = 'http://www.w3.org/2000/09/xmldsig#sha1';
+    sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
 
     sig.keyInfoProvider = {
       getKeyInfo: () => `<X509Data><X509Certificate>${certificate}</X509Certificate></X509Data>`
@@ -98,9 +92,9 @@ export function assinarXml(xml: string, certificateData: CertificateData): strin
       `//*[local-name(.)='infNFe' and @Id='${id}']`,
       [
         'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
-        ALGORITHMS.canonicalization
+        'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
       ],
-      ALGORITHMS.digest,
+      'http://www.w3.org/2000/09/xmldsig#sha1',
       '',
       '',
       '',
