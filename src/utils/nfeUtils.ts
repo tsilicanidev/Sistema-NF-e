@@ -85,7 +85,7 @@ sig.signingKey = privateKey;
 
 // Informações do certificado
 sig.keyInfoProvider = {
-  getKeyInfo: () => `<X509Data><X509Certificate>${cleanCertificate}</X509Certificate></X509Data>`,
+  getKeyInfo: () => `<X509Data><X509Certificate>${certificate}</X509Certificate></X509Data>`,
 };
 
 // ✅ digestAlgorithm deve estar aqui — como terceiro argumento:
