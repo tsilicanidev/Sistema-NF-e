@@ -73,10 +73,16 @@ export class SefazService {
   gerarLoteNFe(xmlNFe: string): string {
     const doc = create({ version: '1.0', encoding: 'UTF-8' })
       .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
-      .ele('idLote').txt(Date.now().toString()).up()
-      .ele('indSinc').txt('1').up();
-    
-    doc.import(xmlNFe);
+        .ele('idLote').txt(Date.now().toString()).up()
+        .ele('indSinc').txt('1').up();
+
+    // Parse the xmlNFe string into a document fragment
+    const parser = new DOMParser();
+    const nfeDoc = parser.parseFromString(xmlNFe, 'text/xml');
+    const nfeElement = nfeDoc.documentElement;
+
+    // Import the NFe element into the enviNFe document
+    doc.import(nfeElement);
     
     return doc.end({ prettyPrint: true });
   }
