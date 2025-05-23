@@ -11,14 +11,19 @@ export default defineConfig({
         global: true,
         process: true,
       },
+      protocolImports: true,
     }),
   ],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-  build: {
-    rollupOptions: {
-      external: ['libxmljs2'],
+  server: {
+    proxy: {
+      '/sefaz': {
+        target: 'https://nfe.sefaz.sp.gov.br',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/sefaz/, ''),
+      },
     },
   },
 });
