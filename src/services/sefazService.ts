@@ -77,9 +77,9 @@ export class SefazService {
           .ele('idLote').txt(Date.now().toString()).up()
           .ele('indSinc').txt('1').up()
           .ele('NFe').raw(xmlNFe).up()
-        .end({ prettyPrint: true });
+        .end();
 
-      return enviNFe.toString();
+      return enviNFe;
     } catch (error: any) {
       console.error('Erro ao gerar lote NF-e:', error);
       throw new Error(`Falha ao gerar lote: ${error.message}`);
@@ -110,7 +110,7 @@ export class SefazService {
           .ele('tpAmb').txt(this.ambiente === 'producao' ? '1' : '2').up()
           .ele('cUF').txt('35').up()
           .ele('xServ').txt('STATUS')
-        .end({ prettyPrint: true });
+        .end();
 
       const response = await axios.post(
         `${this.endpoint}/NFeStatusServico4`,
@@ -141,5 +141,3 @@ export class SefazService {
     };
   }
 }
-
-export default SefazService;
