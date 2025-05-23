@@ -71,7 +71,7 @@ export class SefazService {
       .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
         .ele('idLote').txt(Date.now().toString()).up()
         .ele('indSinc').txt('1').up()
-.import(create(xmlNFe).root())
+        .import(create(xmlNFe).root())
       .end({ prettyPrint: true });
 
     return lote;
