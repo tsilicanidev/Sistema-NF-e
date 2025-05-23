@@ -17,7 +17,7 @@ const SOAP_ENVELOPE = `
                  xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
   <soap12:Header>
     <nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4">
-      <cUF>35</cUF>
+     <cUF>${codigoUF}</cUF>
       <versaoDados>4.00</versaoDados>
     </nfeCabecMsg>
   </soap12:Header>
