@@ -67,14 +67,15 @@ export class SefazService {
   }
 
   gerarLoteNFe(xmlNFe) {
-    // Convert the input XML string to a DOM document using xmlbuilder2
-    const xmlDoc = convert(xmlNFe, { format: 'dom' });
+    // Parse the input XML string to a DOM document
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlNFe, 'text/xml');
     
     const lote = create({ version: '1.0', encoding: 'UTF-8' })
       .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
         .ele('idLote').txt(Date.now().toString()).up()
         .ele('indSinc').txt('1').up()
-        .import(xmlDoc.document.firstChild) // Import the first child (root element) of the document
+        .import(xmlDoc.documentElement) // Use documentElement instead of convert()
       .end({ prettyPrint: true });
 
     return lote;
