@@ -5,6 +5,10 @@
     "xml-crypto": "^3.2.0",
     "xmlbuilder2": "^3.1.1"
   },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.12"
+  },
   "scripts": {
     "dev": "vite"
   }
