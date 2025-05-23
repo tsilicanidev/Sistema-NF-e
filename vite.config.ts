@@ -19,19 +19,17 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/nfeautorizacao4.asmx': {
-        target: 'https://homologacao.nfe.fazenda.sp.gov.br/ws',
+      '/ws/nfeautorizacao4.asmx': {
+        target: 'https://homologacao.nfe.fazenda.sp.gov.br',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/nfeautorizacao4.asmx/, ''),
         configure: (proxy) => {
           proxy.on('error', (err) => {
             console.log('proxy error', err);
           });
           proxy.on('proxyReq', (proxyReq, req) => {
             console.log('Sending Request to SEFAZ:', req.method, req.url);
-            // Add required headers for SOAP requests
-            proxyReq.setHeader('SOAPAction', '');
+            proxyReq.setHeader('SOAPAction', 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote');
             proxyReq.setHeader('Content-Type', 'application/soap+xml;charset=utf-8');
           });
           proxy.on('proxyRes', (proxyRes, req) => {

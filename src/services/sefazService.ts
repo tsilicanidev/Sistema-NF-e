@@ -5,7 +5,7 @@ import { assinarXml } from '../utils/nfeUtils';
 const SEFAZ_ENDPOINTS = {
   SP: {
     producao: 'https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx',
-    homologacao: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx'
+    homologacao: '/ws/nfeautorizacao4.asmx'
   }
 };
 
@@ -51,7 +51,7 @@ export class SefazService {
       const response = await axios.post(this.endpoint, soapEnvelope, {
         headers: {
           'Content-Type': 'application/soap+xml;charset=utf-8',
-          'SOAPAction': ''
+          'SOAPAction': 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote'
         },
         httpsAgent: this.certificado.getHttpsAgent()
       });
@@ -108,7 +108,7 @@ export class SefazService {
         {
           headers: {
             'Content-Type': 'application/xml',
-            'SOAPAction': ''
+            'SOAPAction': 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4/nfeStatusServicoNF'
           },
           httpsAgent: this.certificado.getHttpsAgent()
         }
