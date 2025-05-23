@@ -6,7 +6,7 @@ import https from 'node:https';
 const SEFAZ_ENDPOINTS = {
   SP: {
     producao: 'https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx',
-    homologacao: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx'
+    homologacao: '/nfeautorizacao4.asmx' // Using proxy path
   }
 };
 
@@ -31,10 +31,14 @@ const SOAP_ENVELOPE = `
 
 // Create custom HTTPS agent that accepts self-signed certificates
 const httpsAgent = new https.Agent({
-  rejectUnauthorized: false, // Accept self-signed certificates
+  rejectUnauthorized: false,
   keepAlive: true,
-  timeout: 60000 // Increase timeout to 60 seconds
+  timeout: 60000,
+  maxHeaderSize: 16384
 });
+
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000;
 
 export class SefazService {
   constructor(certificate, ambiente = 'homologacao', uf = 'SP') {
@@ -44,56 +48,76 @@ export class SefazService {
     this.uf = uf;
     this.endpoint = SEFAZ_ENDPOINTS[uf][ambiente];
     
-    // Create axios instance with custom config
     this.axiosInstance = axios.create({
       httpsAgent,
       timeout: 60000,
       maxRedirects: 5,
-      validateStatus: status => status >= 200 && status < 500
+      validateStatus: status => status >= 200 && status < 500,
+      headers: {
+        'User-Agent': 'NFe-Emissor/1.0',
+        'Accept': 'application/soap+xml,application/xml,text/xml,*/*'
+      }
     });
   }
 
-  async autorizarNFe(xmlNFe) {
+  async retryWithExponentialBackoff(operation, retries = MAX_RETRIES, delay = INITIAL_RETRY_DELAY) {
     try {
-      // Assinar XML usando os dados do certificado diretamente
-      const xmlAssinado = await assinarXml(xmlNFe, {
-        pfxBase64: this.pfxBase64,
-        password: this.password
-      });
-
-      // Criar lote
-      const loteXml = this.gerarLoteNFe(xmlAssinado);
-
-      // Montar envelope SOAP
-      const soapEnvelope = SOAP_ENVELOPE.replace('{{CONTENT}}', loteXml);
-
-      // Enviar para SEFAZ usando a instância configurada do axios
-      const response = await this.axiosInstance.post(this.endpoint, soapEnvelope, {
-        headers: {
-          'Content-Type': 'application/soap+xml;charset=utf-8',
-          'SOAPAction': ''
-        }
-      });
-
-      if (response.status >= 400) {
-        throw new Error(`SEFAZ returned status ${response.status}: ${response.statusText}`);
-      }
-
-      // Processar resposta
-      return this.processarRespostaSefaz(response.data);
+      return await operation();
     } catch (error) {
-      if (error.code === 'ECONNREFUSED') {
-        throw new Error('Não foi possível conectar ao servidor SEFAZ. Verifique sua conexão com a internet.');
-      } else if (error.code === 'ETIMEDOUT') {
-        throw new Error('A conexão com o servidor SEFAZ excedeu o tempo limite. Tente novamente.');
-      } else if (error.response) {
-        throw new Error(`Erro do servidor SEFAZ: ${error.response.status} - ${error.response.statusText}`);
-      } else if (error.request) {
-        throw new Error('Não foi possível obter resposta do servidor SEFAZ. Verifique sua conexão.');
-      }
+      if (retries === 0) throw error;
       
-      throw new Error(`Falha na autorização: ${error.message}`);
+      console.log(`Retry attempt remaining: ${retries}. Waiting ${delay}ms before next attempt.`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      return this.retryWithExponentialBackoff(
+        operation,
+        retries - 1,
+        Math.min(delay * 2, 10000) // Max delay of 10 seconds
+      );
     }
+  }
+
+  async autorizarNFe(xmlNFe) {
+    const sendRequest = async () => {
+      try {
+        const xmlAssinado = await assinarXml(xmlNFe, {
+          pfxBase64: this.pfxBase64,
+          password: this.password
+        });
+
+        const loteXml = this.gerarLoteNFe(xmlAssinado);
+        const soapEnvelope = SOAP_ENVELOPE.replace('{{CONTENT}}', loteXml);
+
+        console.log('Enviando requisição para SEFAZ:', this.endpoint);
+        
+        const response = await this.axiosInstance.post(this.endpoint, soapEnvelope, {
+          headers: {
+            'Content-Type': 'application/soap+xml;charset=utf-8',
+            'SOAPAction': ''
+          }
+        });
+
+        if (response.status >= 400) {
+          throw new Error(`SEFAZ returned status ${response.status}: ${response.statusText}`);
+        }
+
+        return this.processarRespostaSefaz(response.data);
+      } catch (error) {
+        if (error.code === 'ECONNREFUSED') {
+          throw new Error('Servidor SEFAZ indisponível. Tente novamente em alguns minutos.');
+        } else if (error.code === 'ETIMEDOUT') {
+          throw new Error('Tempo de conexão com o servidor SEFAZ excedido. Tente novamente.');
+        } else if (error.response?.status === 404) {
+          throw new Error('Endpoint SEFAZ não encontrado. Verifique a configuração do ambiente.');
+        } else if (error.response) {
+          throw new Error(`Erro do servidor SEFAZ: ${error.response.status} - ${error.response.statusText}`);
+        }
+        
+        throw error;
+      }
+    };
+
+    return this.retryWithExponentialBackoff(sendRequest);
   }
 
   gerarLoteNFe(xmlNFe) {
@@ -130,38 +154,42 @@ export class SefazService {
   }
 
   async consultarStatus() {
-    try {
-      const xmlConsulta = create({ version: '1.0', encoding: 'UTF-8' })
-        .ele('consStatServ', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
-          .ele('tpAmb').txt(this.ambiente === 'producao' ? '1' : '2').up()
-          .ele('cUF').txt('35').up()
-          .ele('xServ').txt('STATUS')
-        .end({ prettyPrint: true });
+    const sendRequest = async () => {
+      try {
+        const xmlConsulta = create({ version: '1.0', encoding: 'UTF-8' })
+          .ele('consStatServ', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
+            .ele('tpAmb').txt(this.ambiente === 'producao' ? '1' : '2').up()
+            .ele('cUF').txt('35').up()
+            .ele('xServ').txt('STATUS')
+          .end({ prettyPrint: true });
 
-      const response = await this.axiosInstance.post(
-        `${this.endpoint}/NFeStatusServico4`,
-        xmlConsulta,
-        {
-          headers: {
-            'Content-Type': 'application/xml',
-            'SOAPAction': ''
+        const response = await this.axiosInstance.post(
+          `${this.endpoint}/NFeStatusServico4`,
+          xmlConsulta,
+          {
+            headers: {
+              'Content-Type': 'application/xml',
+              'SOAPAction': ''
+            }
           }
+        );
+
+        if (response.status >= 400) {
+          throw new Error(`SEFAZ returned status ${response.status}: ${response.statusText}`);
         }
-      );
 
-      if (response.status >= 400) {
-        throw new Error(`SEFAZ returned status ${response.status}: ${response.statusText}`);
+        return this.processarRespostaStatus(response.data);
+      } catch (error) {
+        if (error.code === 'ECONNREFUSED') {
+          throw new Error('Servidor de status SEFAZ indisponível. Tente novamente em alguns minutos.');
+        } else if (error.code === 'ETIMEDOUT') {
+          throw new Error('Tempo de conexão com o servidor de status SEFAZ excedido. Tente novamente.');
+        }
+        throw error;
       }
+    };
 
-      return this.processarRespostaStatus(response.data);
-    } catch (error) {
-      if (error.code === 'ECONNREFUSED') {
-        throw new Error('Não foi possível conectar ao servidor de status SEFAZ. Verifique sua conexão com a internet.');
-      } else if (error.code === 'ETIMEDOUT') {
-        throw new Error('A conexão com o servidor de status SEFAZ excedeu o tempo limite. Tente novamente.');
-      }
-      throw new Error(`Falha na consulta de status: ${error.message}`);
-    }
+    return this.retryWithExponentialBackoff(sendRequest);
   }
 
   processarRespostaStatus(xmlResposta) {
