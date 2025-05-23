@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { DOMParser } from '@xmldom/xmldom';
-import { create } from 'xmlbuilder2';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
+import { create, convert } from 'xmlbuilder2';
 import { SignedXml } from 'xml-crypto';
 import { assinarXml } from '../utils/nfeUtils';
 
@@ -31,19 +31,14 @@ const SOAP_ENVELOPE = `
 `;
 
 export class SefazService {
-  constructor(certificado: any, ambiente: 'homologacao' | 'producao' = 'homologacao', uf: 'SP' = 'SP') {
+  constructor(certificado, ambiente = 'homologacao', uf = 'SP') {
     this.certificado = certificado;
     this.ambiente = ambiente;
     this.uf = uf;
     this.endpoint = SEFAZ_ENDPOINTS[uf][ambiente];
   }
 
-  private certificado: any;
-  private ambiente: 'homologacao' | 'producao';
-  private uf: 'SP';
-  private endpoint: string;
-
-  async autorizarNFe(xmlNFe: string) {
+  async autorizarNFe(xmlNFe) {
     try {
       // Assinar XML
       const xmlAssinado = await assinarXml(xmlNFe, this.certificado);
@@ -59,34 +54,30 @@ export class SefazService {
         headers: {
           'Content-Type': 'application/soap+xml;charset=utf-8',
           'SOAPAction': ''
-        }
+        },
+        httpsAgent: this.certificado.getHttpsAgent()
       });
 
       // Processar resposta
       return this.processarRespostaSefaz(response.data);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao autorizar NF-e:', error);
       throw new Error(`Falha na autorização: ${error.message}`);
     }
   }
 
-  gerarLoteNFe(xmlNFe: string): string {
-    try {
-      const enviNFe = create({ version: '1.0', encoding: 'UTF-8' })
-        .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
-          .ele('idLote').txt(Date.now().toString()).up()
-          .ele('indSinc').txt('1').up()
-          .ele('NFe').raw(xmlNFe).up()
-        .end();
+  gerarLoteNFe(xmlNFe) {
+    const lote = create({ version: '1.0', encoding: 'UTF-8' })
+      .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
+        .ele('idLote').txt(Date.now().toString()).up()
+        .ele('indSinc').txt('1').up()
+.import(create(xmlNFe).root())
+      .end({ prettyPrint: true });
 
-      return enviNFe;
-    } catch (error: any) {
-      console.error('Erro ao gerar lote NF-e:', error);
-      throw new Error(`Falha ao gerar lote: ${error.message}`);
-    }
+    return lote;
   }
 
-  processarRespostaSefaz(xmlResposta: string) {
+  processarRespostaSefaz(xmlResposta) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlResposta, 'text/xml');
     
@@ -110,7 +101,7 @@ export class SefazService {
           .ele('tpAmb').txt(this.ambiente === 'producao' ? '1' : '2').up()
           .ele('cUF').txt('35').up()
           .ele('xServ').txt('STATUS')
-        .end();
+        .end({ prettyPrint: true });
 
       const response = await axios.post(
         `${this.endpoint}/NFeStatusServico4`,
@@ -119,18 +110,19 @@ export class SefazService {
           headers: {
             'Content-Type': 'application/xml',
             'SOAPAction': ''
-          }
+          },
+          httpsAgent: this.certificado.getHttpsAgent()
         }
       );
 
       return this.processarRespostaStatus(response.data);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao consultar status:', error);
       throw new Error(`Falha na consulta de status: ${error.message}`);
     }
   }
 
-  processarRespostaStatus(xmlResposta: string) {
+  processarRespostaStatus(xmlResposta) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlResposta, 'text/xml');
     
@@ -141,3 +133,5 @@ export class SefazService {
     };
   }
 }
+
+export default SefazService;
