@@ -1,7 +1,5 @@
 import axios from 'axios';
-import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
-import { create, convert } from 'xmlbuilder2';
-import { SignedXml } from 'xml-crypto';
+import { create } from 'xmlbuilder2';
 import { assinarXml } from '../utils/nfeUtils';
 
 const SEFAZ_ENDPOINTS = {
@@ -67,15 +65,13 @@ export class SefazService {
   }
 
   gerarLoteNFe(xmlNFe) {
-    // Parse the input XML string to a DOM document
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlNFe, 'text/xml');
-    
+    const rootNFe = create(xmlNFe).root();
+
     const lote = create({ version: '1.0', encoding: 'UTF-8' })
       .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
         .ele('idLote').txt(Date.now().toString()).up()
         .ele('indSinc').txt('1').up()
-        .import(xmlDoc.documentElement) // Use documentElement instead of convert()
+        .import(rootNFe)
       .end({ prettyPrint: true });
 
     return lote;
@@ -85,7 +81,6 @@ export class SefazService {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlResposta, 'text/xml');
     
-    // Extrair informações relevantes
     const cStat = doc.getElementsByTagName('cStat')[0]?.textContent;
     const xMotivo = doc.getElementsByTagName('xMotivo')[0]?.textContent;
     const protocolo = doc.getElementsByTagName('nProt')[0]?.textContent;
