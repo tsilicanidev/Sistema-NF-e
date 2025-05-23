@@ -5,8 +5,8 @@ import https from 'node:https';
 
 const SEFAZ_ENDPOINTS = {
   SP: {
-    producao: '/ws/nfeautorizacao4.asmx',
-    homologacao: '/homologacao/ws/nfeautorizacao4.asmx'
+    producao: 'https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx',
+    homologacao: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx'
   }
 };
 
