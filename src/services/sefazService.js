@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
-import { create } from 'xmlbuilder2';
+import { create, convert } from 'xmlbuilder2';
 import { SignedXml } from 'xml-crypto';
 import { assinarXml } from '../utils/nfeUtils';
 
@@ -71,7 +71,7 @@ export class SefazService {
       .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
         .ele('idLote').txt(Date.now().toString()).up()
         .ele('indSinc').txt('1').up()
-        .raw(xmlNFe)
+        .import(convert(xmlNFe, { format: 'dom' }).document.documentElement)
       .end({ prettyPrint: true });
 
     return lote;
