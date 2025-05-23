@@ -5,7 +5,7 @@ import { assinarXml } from '../utils/nfeUtils';
 const SEFAZ_ENDPOINTS = {
   SP: {
     producao: 'https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx',
-    homologacao: '/ws/nfeautorizacao4.asmx'
+    homologacao: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx'
   }
 };
 
