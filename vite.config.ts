@@ -20,9 +20,21 @@ export default defineConfig({
   server: {
     proxy: {
       '/sefaz': {
-        target: 'https://nfe.sefaz.sp.gov.br',
+        target: 'https://nfe.fazenda.sp.gov.br',
         changeOrigin: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/sefaz/, ''),
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log('Sending Request to SEFAZ:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req) => {
+            console.log('Received Response from SEFAZ:', proxyRes.statusCode, req.url);
+          });
+        }
       },
     },
   },

@@ -5,8 +5,8 @@ import https from 'node:https';
 
 const SEFAZ_ENDPOINTS = {
   SP: {
-    producao: 'https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx',
-    homologacao: 'https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx'
+    producao: '/sefaz/ws/nfeautorizacao4.asmx',
+    homologacao: '/sefaz/homologacao/ws/nfeautorizacao4.asmx'
   }
 };
 
@@ -29,6 +29,13 @@ const SOAP_ENVELOPE = `
 </soap12:Envelope>
 `;
 
+// Create custom HTTPS agent that accepts self-signed certificates
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false, // Accept self-signed certificates
+  keepAlive: true,
+  timeout: 60000 // Increase timeout to 60 seconds
+});
+
 export class SefazService {
   constructor(certificate, ambiente = 'homologacao', uf = 'SP') {
     this.pfxBase64 = certificate.pfxBase64;
@@ -36,6 +43,14 @@ export class SefazService {
     this.ambiente = ambiente;
     this.uf = uf;
     this.endpoint = SEFAZ_ENDPOINTS[uf][ambiente];
+    
+    // Create axios instance with custom config
+    this.axiosInstance = axios.create({
+      httpsAgent,
+      timeout: 60000,
+      maxRedirects: 5,
+      validateStatus: status => status >= 200 && status < 500
+    });
   }
 
   async autorizarNFe(xmlNFe) {
@@ -52,18 +67,31 @@ export class SefazService {
       // Montar envelope SOAP
       const soapEnvelope = SOAP_ENVELOPE.replace('{{CONTENT}}', loteXml);
 
-      // Enviar para SEFAZ
-      const response = await axios.post(this.endpoint, soapEnvelope, {
+      // Enviar para SEFAZ usando a instância configurada do axios
+      const response = await this.axiosInstance.post(this.endpoint, soapEnvelope, {
         headers: {
           'Content-Type': 'application/soap+xml;charset=utf-8',
           'SOAPAction': ''
         }
       });
 
+      if (response.status >= 400) {
+        throw new Error(`SEFAZ returned status ${response.status}: ${response.statusText}`);
+      }
+
       // Processar resposta
       return this.processarRespostaSefaz(response.data);
     } catch (error) {
-      console.error('Erro ao autorizar NF-e:', error);
+      if (error.code === 'ECONNREFUSED') {
+        throw new Error('Não foi possível conectar ao servidor SEFAZ. Verifique sua conexão com a internet.');
+      } else if (error.code === 'ETIMEDOUT') {
+        throw new Error('A conexão com o servidor SEFAZ excedeu o tempo limite. Tente novamente.');
+      } else if (error.response) {
+        throw new Error(`Erro do servidor SEFAZ: ${error.response.status} - ${error.response.statusText}`);
+      } else if (error.request) {
+        throw new Error('Não foi possível obter resposta do servidor SEFAZ. Verifique sua conexão.');
+      }
+      
       throw new Error(`Falha na autorização: ${error.message}`);
     }
   }
@@ -89,9 +117,13 @@ export class SefazService {
     const xMotivo = doc.getElementsByTagName('xMotivo')[0]?.textContent;
     const protocolo = doc.getElementsByTagName('nProt')[0]?.textContent;
 
+    if (!cStat) {
+      throw new Error('Resposta inválida do servidor SEFAZ');
+    }
+
     return {
       status: cStat === '100' ? 'autorizada' : 'rejeitada',
-      mensagem: xMotivo,
+      mensagem: xMotivo || 'Sem mensagem do servidor',
       protocolo,
       xml: xmlResposta
     };
@@ -106,7 +138,7 @@ export class SefazService {
           .ele('xServ').txt('STATUS')
         .end({ prettyPrint: true });
 
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${this.endpoint}/NFeStatusServico4`,
         xmlConsulta,
         {
@@ -117,9 +149,17 @@ export class SefazService {
         }
       );
 
+      if (response.status >= 400) {
+        throw new Error(`SEFAZ returned status ${response.status}: ${response.statusText}`);
+      }
+
       return this.processarRespostaStatus(response.data);
     } catch (error) {
-      console.error('Erro ao consultar status:', error);
+      if (error.code === 'ECONNREFUSED') {
+        throw new Error('Não foi possível conectar ao servidor de status SEFAZ. Verifique sua conexão com a internet.');
+      } else if (error.code === 'ETIMEDOUT') {
+        throw new Error('A conexão com o servidor de status SEFAZ excedeu o tempo limite. Tente novamente.');
+      }
       throw new Error(`Falha na consulta de status: ${error.message}`);
     }
   }
@@ -128,10 +168,18 @@ export class SefazService {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlResposta, 'text/xml');
     
+    const cStat = doc.getElementsByTagName('cStat')[0]?.textContent;
+    const xMotivo = doc.getElementsByTagName('xMotivo')[0]?.textContent;
+    const tMed = doc.getElementsByTagName('tMed')[0]?.textContent;
+
+    if (!cStat) {
+      throw new Error('Resposta inválida do servidor de status SEFAZ');
+    }
+
     return {
-      status: doc.getElementsByTagName('cStat')[0]?.textContent,
-      mensagem: doc.getElementsByTagName('xMotivo')[0]?.textContent,
-      tempo: doc.getElementsByTagName('tMed')[0]?.textContent
+      status: cStat,
+      mensagem: xMotivo || 'Sem mensagem do servidor',
+      tempo: tMed
     };
   }
 }
