@@ -19,11 +19,11 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/sefaz': {
+      '/ws': {
         target: 'https://nfe.fazenda.sp.gov.br',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/sefaz/, ''),
+        ws: true,
         configure: (proxy) => {
           proxy.on('error', (err) => {
             console.log('proxy error', err);
@@ -36,6 +36,23 @@ export default defineConfig({
           });
         }
       },
+      '/homologacao': {
+        target: 'https://homologacao.nfe.fazenda.sp.gov.br',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log('Sending Request to SEFAZ Homologação:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req) => {
+            console.log('Received Response from SEFAZ Homologação:', proxyRes.statusCode, req.url);
+          });
+        }
+      }
     },
   },
 });
