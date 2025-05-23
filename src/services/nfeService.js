@@ -26,8 +26,11 @@ export async function emitirNFe(notaFiscal, certificate) {
     const infNFe = montarInfNFe(notaFiscal, chaveNFe);
     const xmlNFe = gerarXmlNFe(infNFe, chaveNFe);
 
-    // Criar instância do serviço SEFAZ
-    const sefazService = new SefazService(certificate);
+    // Criar instância do serviço SEFAZ passando os dados do certificado diretamente
+    const sefazService = new SefazService({
+      pfxBase64: certificate.pfxBase64,
+      password: certificate.password
+    });
 
     // Enviar para SEFAZ
     const resultado = await sefazService.autorizarNFe(xmlNFe);

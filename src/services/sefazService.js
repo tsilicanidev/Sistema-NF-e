@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { create } from 'xmlbuilder2';
 import { assinarXml } from '../utils/nfeUtils';
+import https from 'node:https';
 
 const SEFAZ_ENDPOINTS = {
   SP: {
@@ -29,8 +30,9 @@ const SOAP_ENVELOPE = `
 `;
 
 export class SefazService {
-  constructor(certificado, ambiente = 'homologacao', uf = 'SP') {
-    this.certificado = certificado;
+  constructor(certificate, ambiente = 'homologacao', uf = 'SP') {
+    this.pfxBase64 = certificate.pfxBase64;
+    this.password = certificate.password;
     this.ambiente = ambiente;
     this.uf = uf;
     this.endpoint = SEFAZ_ENDPOINTS[uf][ambiente];
@@ -38,8 +40,11 @@ export class SefazService {
 
   async autorizarNFe(xmlNFe) {
     try {
-      // Assinar XML
-      const xmlAssinado = await assinarXml(xmlNFe, this.certificado);
+      // Assinar XML usando os dados do certificado diretamente
+      const xmlAssinado = await assinarXml(xmlNFe, {
+        pfxBase64: this.pfxBase64,
+        password: this.password
+      });
 
       // Criar lote
       const loteXml = this.gerarLoteNFe(xmlAssinado);
@@ -52,8 +57,7 @@ export class SefazService {
         headers: {
           'Content-Type': 'application/soap+xml;charset=utf-8',
           'SOAPAction': ''
-        },
-        httpsAgent: this.certificado.getHttpsAgent()
+        }
       });
 
       // Processar resposta
@@ -109,8 +113,7 @@ export class SefazService {
           headers: {
             'Content-Type': 'application/xml',
             'SOAPAction': ''
-          },
-          httpsAgent: this.certificado.getHttpsAgent()
+          }
         }
       );
 
