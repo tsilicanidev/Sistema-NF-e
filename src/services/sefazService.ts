@@ -59,8 +59,7 @@ export class SefazService {
         headers: {
           'Content-Type': 'application/soap+xml;charset=utf-8',
           'SOAPAction': ''
-        },
-        httpsAgent: this.certificado.getHttpsAgent()
+        }
       });
 
       // Processar resposta
@@ -72,14 +71,14 @@ export class SefazService {
   }
 
   gerarLoteNFe(xmlNFe: string): string {
-    const lote = create({ version: '1.0', encoding: 'UTF-8' })
+    const doc = create({ version: '1.0', encoding: 'UTF-8' })
       .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
-        .ele('idLote').txt(Date.now().toString()).up()
-        .ele('indSinc').txt('1').up()
-        .raw(xmlNFe)
-      .end({ prettyPrint: true });
-
-    return lote;
+      .ele('idLote').txt(Date.now().toString()).up()
+      .ele('indSinc').txt('1').up();
+    
+    doc.import(xmlNFe);
+    
+    return doc.end({ prettyPrint: true });
   }
 
   processarRespostaSefaz(xmlResposta: string) {
@@ -115,8 +114,7 @@ export class SefazService {
           headers: {
             'Content-Type': 'application/xml',
             'SOAPAction': ''
-          },
-          httpsAgent: this.certificado.getHttpsAgent()
+          }
         }
       );
 
