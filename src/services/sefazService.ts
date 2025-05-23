@@ -71,20 +71,28 @@ export class SefazService {
   }
 
   gerarLoteNFe(xmlNFe: string): string {
-    const doc = create({ version: '1.0', encoding: 'UTF-8' })
-      .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
-        .ele('idLote').txt(Date.now().toString()).up()
-        .ele('indSinc').txt('1').up();
+    try {
+      // Parse the xmlNFe string into a document fragment
+      const parser = new DOMParser();
+      const nfeDoc = parser.parseFromString(xmlNFe, 'text/xml');
+      const nfeElement = nfeDoc.documentElement;
 
-    // Parse the xmlNFe string into a document fragment
-    const parser = new DOMParser();
-    const nfeDoc = parser.parseFromString(xmlNFe, 'text/xml');
-    const nfeElement = nfeDoc.documentElement;
+      // Create the enviNFe document
+      const enviNFe = create({ version: '1.0', encoding: 'UTF-8' })
+        .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
+          .ele('idLote').txt(Date.now().toString()).up()
+          .ele('indSinc').txt('1').up();
 
-    // Import the NFe element into the enviNFe document
-    doc.import(nfeElement);
-    
-    return doc.end({ prettyPrint: true });
+      // Convert the NFe element to string and append it to enviNFe
+      const serializer = new XMLSerializer();
+      const nfeString = serializer.serializeToString(nfeElement);
+      enviNFe.raw(nfeString);
+
+      return enviNFe.end({ prettyPrint: true });
+    } catch (error: any) {
+      console.error('Erro ao gerar lote NF-e:', error);
+      throw new Error(`Falha ao gerar lote: ${error.message}`);
+    }
   }
 
   processarRespostaSefaz(xmlResposta: string) {
