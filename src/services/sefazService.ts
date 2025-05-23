@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
+import { DOMParser } from '@xmldom/xmldom';
 import { create } from 'xmlbuilder2';
 import { SignedXml } from 'xml-crypto';
 import { assinarXml } from '../utils/nfeUtils';
@@ -72,23 +72,14 @@ export class SefazService {
 
   gerarLoteNFe(xmlNFe: string): string {
     try {
-      // Parse the xmlNFe string into a document fragment
-      const parser = new DOMParser();
-      const nfeDoc = parser.parseFromString(xmlNFe, 'text/xml');
-      const nfeElement = nfeDoc.documentElement;
-
-      // Create the enviNFe document
       const enviNFe = create({ version: '1.0', encoding: 'UTF-8' })
         .ele('enviNFe', { xmlns: 'http://www.portalfiscal.inf.br/nfe', versao: '4.00' })
           .ele('idLote').txt(Date.now().toString()).up()
-          .ele('indSinc').txt('1').up();
+          .ele('indSinc').txt('1').up()
+          .ele('NFe').raw(xmlNFe).up()
+        .end({ prettyPrint: true });
 
-      // Convert the NFe element to string and append it to enviNFe
-      const serializer = new XMLSerializer();
-      const nfeString = serializer.serializeToString(nfeElement);
-      enviNFe.raw(nfeString);
-
-      return enviNFe.end({ prettyPrint: true });
+      return enviNFe.toString();
     } catch (error: any) {
       console.error('Erro ao gerar lote NF-e:', error);
       throw new Error(`Falha ao gerar lote: ${error.message}`);
