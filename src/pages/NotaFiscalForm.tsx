@@ -10,7 +10,14 @@ import { gerarChaveNFe, gerarXmlNFe, validarXmlComXSD } from '../utils/nfeUtils'
 import { useNavigate } from 'react-router-dom';
 
 const NotaFiscalForm = () => {
-  // ... (outros hooks, estados e form handlers omitidos para foco)
+  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { emissor } = useEmissor();
+  const { certificado } = useCertificado();
+  const { adicionarNotificacao } = useNotificacao();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [produtos, setProdutos] = useState([]);
 
   const onSubmit = async (data: NotaFiscalFormData) => {
     try {
@@ -137,8 +144,8 @@ const NotaFiscalForm = () => {
       }
 
       const resultado = await emitirNotaFiscal(xml, {
-        pfxBase64: certificado.arquivo, // ⚠️ Evitar logar ou expor esse dado em produção
-        password: certificado.senha     // ⚠️ Garantir que isso não seja armazenado em texto plano
+        pfxBase64: certificado.arquivo,
+        password: certificado.senha
       });
 
       if (resultado.status === 'autorizada') {
@@ -155,7 +162,11 @@ const NotaFiscalForm = () => {
     }
   };
 
-  return <form onSubmit={handleSubmit(onSubmit)}>{/* ... */}</form>;
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {/* Form content will be added here */}
+    </form>
+  );
 };
 
 export default NotaFiscalForm;
