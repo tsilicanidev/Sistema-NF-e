@@ -67,24 +67,18 @@ export async function emitirNFe(notaFiscal: NotaFiscal, certificate: Certificate
     const infNFe = montarInfNFe(notaFiscal, chaveNFe);
     const xmlNFe = gerarXmlNFe(infNFe, chaveNFe);
 
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nfe`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-      },
-      body: JSON.stringify({
+    // Call Supabase Edge Function instead of direct SEFAZ communication
+    const { data: resultado, error } = await supabase.functions.invoke('nfe', {
+      body: {
         xmlNFe,
         certificate,
         ambiente: 'homologacao'
-      })
+      }
     });
 
-    if (!response.ok) {
-      throw new Error(`Erro ao enviar NF-e: ${response.statusText}`);
+    if (error) {
+      throw new Error(`Erro ao enviar NF-e: ${error.message}`);
     }
-
-    const resultado = await response.json();
 
     if (resultado.status === 'autorizada') {
       const { data: emissor } = await supabase
@@ -134,7 +128,6 @@ export async function emitirNFe(notaFiscal: NotaFiscal, certificate: Certificate
 }
 
 function montarInfNFe(notaFiscal: NotaFiscal, chaveNFe: string) {
-  // Implementação existente mantida
   return {
     ide: {
       cUF: '35',
