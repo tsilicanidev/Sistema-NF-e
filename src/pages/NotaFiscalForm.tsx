@@ -1,3 +1,5 @@
+import { gerarXmlNFe, gerarChaveNFe } from '../utils/nfeUtils';
+
 const onSubmit = async (data: NotaFiscalFormData) => {
   try {
     setAttemptedSubmit(true);
