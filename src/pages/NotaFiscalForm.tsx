@@ -8,6 +8,7 @@ import { useNotificacao } from '../contexts/NotificacaoContext';
 import { emitirNotaFiscal } from '../services/emitirNotaFiscal';
 import { gerarDanfePDF } from '../services/danfeService';
 import { useNavigate } from 'react-router-dom';
+import { gerarXmlNFe, gerarChaveNFe } from '../utils/nfeUtils';
 
 interface NotaFiscalFormData {
   naturezaOperacao: string;
@@ -78,21 +79,23 @@ const NotaFiscalForm: React.FC = () => {
     }
   }, [emissor, certificado, adicionarNotificacao, navigate]);
 
-  const onSubmit = async (data: NotaFiscalFormData) => {
-    try {
-      setAttemptedSubmit(true);
+  const chave = gerarChaveNFe(
+  emissor.endereco.codigoUF,
+  new Date().toISOString().slice(2, 7).replace('-', ''),
+  emissor.cnpj,
+  '55',
+  '1',
+  notaFiscal.numero.padStart(9, '0'),
+  '1',
+  Math.floor(Math.random() * 100000000).toString().padStart(8, '0')
+);
 
-      if (produtos.length === 0) {
-        adicionarNotificacao('erro', 'Adicione pelo menos um produto');
-        return;
-      }
+const xml = gerarXmlNFe({ ...notaFiscal, emit: emissor }, chave);
 
-      if (!certificado?.arquivo || !certificado?.senha) {
-        adicionarNotificacao('erro', 'Certificado digital não configurado corretamente');
-        return;
-      }
-
-      setLoading(true);
+const resultado = await emitirNotaFiscal(xml, {
+  pfxBase64: certificado.arquivo,
+  password: certificado.senha
+});
 
       const valorTotal = produtos.reduce((total, produto) => {
         return total + (produto.quantidade * produto.valorUnitario);
