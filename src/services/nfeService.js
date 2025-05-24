@@ -29,11 +29,16 @@ export async function emitirNFe(notaFiscal, certificate) {
     // Criar instância do serviço SEFAZ passando os dados do certificado diretamente
     const sefazService = new SefazService({
       pfxBase64: certificate.pfxBase64,
-      password: certificate.password
+      password: certificate.password,
+      baseUrl: '/nfe' // Updated to use the new proxy path
     });
 
     // Enviar para SEFAZ
     const resultado = await sefazService.autorizarNFe(xmlNFe);
+
+    if (!resultado) {
+      throw new Error('Não foi possível obter resposta do SEFAZ');
+    }
 
     if (resultado.status === 'autorizada') {
       const { data: emissor } = await supabase
@@ -75,10 +80,7 @@ export async function emitirNFe(notaFiscal, certificate) {
     };
   } catch (error) {
     console.error('Erro ao emitir NF-e:', error);
-    return {
-      status: 'erro',
-      mensagem: error instanceof Error ? error.message : 'Erro desconhecido ao emitir NF-e'
-    };
+    throw error; // Re-throw the error to be handled by the caller
   }
 }
 
@@ -134,9 +136,6 @@ export async function consultarNFe(chave) {
     };
   } catch (error) {
     console.error('Erro ao consultar NF-e:', error);
-    return {
-      status: 'erro',
-      mensagem: 'Erro ao consultar status da NF-e'
-    };
+    throw error; // Re-throw the error to be handled by the caller
   }
 }
