@@ -45,7 +45,6 @@ export class SefazService {
     this.certificado = certificado;
     this.ambiente = ambiente;
     this.uf = uf;
-
     this.apiUrl = '/api/emitir-nfe'; // <- novo endpoint local
   }
 
@@ -67,50 +66,6 @@ export class SefazService {
       }
       throw new Error('Erro ao enviar XML para o backend.');
     }
-  }
-}
-
-  async autorizarNFe(xmlNFe) {
-    const sendRequest = async () => {
-      try {
-        const xmlAssinado = await assinarXml(xmlNFe, {
-          pfxBase64: this.pfxBase64,
-          password: this.password
-        });
-
-        const loteXml = this.gerarLoteNFe(xmlAssinado);
-        const soapEnvelope = SOAP_ENVELOPE.replace('{{CONTENT}}', loteXml);
-
-        console.log('Enviando requisição para SEFAZ:', this.endpoint);
-        
-        const response = await this.axiosInstance.post(this.endpoint, soapEnvelope, {
-          headers: {
-            'Content-Type': 'application/soap+xml;charset=utf-8',
-            'SOAPAction': ''
-          }
-        });
-
-        if (response.status >= 400) {
-          throw new Error(`SEFAZ returned status ${response.status}: ${response.statusText}`);
-        }
-
-        return this.processarRespostaSefaz(response.data);
-      } catch (error) {
-        if (error.code === 'ECONNREFUSED') {
-          throw new Error('Servidor SEFAZ indisponível. Tente novamente em alguns minutos.');
-        } else if (error.code === 'ETIMEDOUT') {
-          throw new Error('Tempo de conexão com o servidor SEFAZ excedido. Tente novamente.');
-        } else if (error.response?.status === 404) {
-          throw new Error('Endpoint SEFAZ não encontrado. Verifique a configuração do ambiente.');
-        } else if (error.response) {
-          throw new Error(`Erro do servidor SEFAZ: ${error.response.status} - ${error.response.statusText}`);
-        }
-        
-        throw error;
-      }
-    };
-
-    return this.retryWithExponentialBackoff(sendRequest);
   }
 
   gerarLoteNFe(xmlNFe) {
