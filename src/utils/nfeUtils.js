@@ -111,6 +111,33 @@ export function gerarLoteNFe(xmlNFe, idLote) {
 </enviNFe>`;
 }
 
+export async function validarXmlComXSD(xml, schemaFilename) {
+  try {
+    // Since we're in a browser environment, we'll make a request to a backend endpoint
+    // that handles the actual XSD validation
+    const response = await fetch('/api/validarXml', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        xml,
+        schema: schemaFilename
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Falha na validação do XML');
+    }
+
+    const result = await response.json();
+    return result.valid;
+  } catch (error) {
+    console.error('Erro ao validar XML:', error);
+    return false;
+  }
+}
+
 function isValidBase64(str) {
   try {
     if (str.length % 4 !== 0) return false;
