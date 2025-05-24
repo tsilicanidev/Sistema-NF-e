@@ -41,41 +41,34 @@ const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
 
 export class SefazService {
-  constructor(certificate, ambiente = 'homologacao', uf = 'SP') {
-    this.pfxBase64 = certificate.pfxBase64;
-    this.password = certificate.password;
+  constructor(certificado, ambiente = 'homologacao', uf = 'SP') {
+    this.certificado = certificado;
     this.ambiente = ambiente;
     this.uf = uf;
-    this.endpoint = SEFAZ_ENDPOINTS[uf][ambiente];
-    
-    this.axiosInstance = axios.create({
-      httpsAgent,
-      timeout: 60000,
-      maxRedirects: 5,
-      validateStatus: status => status >= 200 && status < 500,
-      headers: {
-        'User-Agent': 'NFe-Emissor/1.0',
-        'Accept': 'application/soap+xml,application/xml,text/xml,*/*'
-      }
-    });
+
+    this.apiUrl = '/api/emitir-nfe'; // <- novo endpoint local
   }
 
-  async retryWithExponentialBackoff(operation, retries = MAX_RETRIES, delay = INITIAL_RETRY_DELAY) {
+  async autorizarNFe(xmlNFe) {
     try {
-      return await operation();
+      console.log('Enviando XML assinado para o backend local...');
+      const response = await axios.post(this.apiUrl, {
+        xml: xmlNFe,
+        certificado: this.certificado,
+        ambiente: this.ambiente,
+        uf: this.uf
+      });
+
+      return response.data;
     } catch (error) {
-      if (retries === 0) throw error;
-      
-      console.log(`Retry attempt remaining: ${retries}. Waiting ${delay}ms before next attempt.`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
-      return this.retryWithExponentialBackoff(
-        operation,
-        retries - 1,
-        Math.min(delay * 2, 10000) // Max delay of 10 seconds
-      );
+      console.error('Erro ao enviar para o backend local:', error);
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw new Error('Erro ao enviar XML para o backend.');
     }
   }
+}
 
   async autorizarNFe(xmlNFe) {
     const sendRequest = async () => {
