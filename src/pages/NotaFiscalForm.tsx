@@ -8,7 +8,7 @@ import { useNotificacao } from '../contexts/NotificacaoContext';
 import { emitirNotaFiscal } from '../services/emitirNotaFiscal';
 import { gerarDanfePDF } from '../services/danfeService';
 import { useNavigate } from 'react-router-dom';
-import { gerarXmlNFe, gerarChaveNFe } from '../utils/nfeUtils';
+
 
 interface NotaFiscalFormData {
   naturezaOperacao: string;
