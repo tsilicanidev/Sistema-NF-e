@@ -5,6 +5,7 @@ import { create } from 'xmlbuilder2';
 import axios from 'axios';
 import forge from 'node-forge';
 import { assinarXml } from '../../utils/nfeUtils';
+import { DOMParser } from '@xmldom/xmldom';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -45,7 +46,14 @@ export default async function handler(req, res) {
       })
     });
 
-    return res.status(200).json({ xmlResposta: response.data });
+    const parsed = processarRespostaSefaz(response.data);
+
+    return res.status(200).json({
+      status: parsed.status,
+      mensagem: parsed.mensagem,
+      protocolo: parsed.protocolo,
+      xmlResposta: response.data
+    });
   } catch (error) {
     console.error('Erro ao emitir NF-e:', error);
     return res.status(500).json({ message: error.message });
@@ -80,4 +88,23 @@ function gerarEnvelopeSOAP(conteudoLote) {
     </nfeDadosMsg>
   </soap12:Body>
 </soap12:Envelope>`;
+}
+
+function processarRespostaSefaz(xmlResposta) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlResposta, 'text/xml');
+
+  const cStat = doc.getElementsByTagName('cStat')[0]?.textContent;
+  const xMotivo = doc.getElementsByTagName('xMotivo')[0]?.textContent;
+  const protocolo = doc.getElementsByTagName('nProt')[0]?.textContent;
+
+  if (!cStat) {
+    throw new Error('Resposta inválida do servidor SEFAZ');
+  }
+
+  return {
+    status: cStat === '100' ? 'autorizada' : 'rejeitada',
+    mensagem: xMotivo || 'Sem mensagem do servidor',
+    protocolo
+  };
 }
