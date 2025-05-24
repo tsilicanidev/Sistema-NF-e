@@ -103,17 +103,24 @@ Deno.serve(async (req) => {
 
     const soapEnvelope = SOAP_ENVELOPE.replace('{{CONTENT}}', loteXml);
     
-    const response = await fetch(SEFAZ_ENDPOINTS.SP[ambiente], {
+    // Updated endpoint URL construction
+    const endpoint = SEFAZ_ENDPOINTS.SP[ambiente];
+    
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/soap+xml;charset=utf-8',
-        'SOAPAction': 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote'
+        'SOAPAction': 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote',
+        'Accept': 'application/soap+xml',
+        'Connection': 'keep-alive'
       },
       body: soapEnvelope
     });
 
     if (!response.ok) {
-      throw new Error(`SEFAZ returned status ${response.status}: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('SEFAZ Error Response:', errorText);
+      throw new Error(`SEFAZ returned status ${response.status}: ${response.statusText}\nResponse: ${errorText}`);
     }
 
     const xmlResposta = await response.text();
@@ -140,7 +147,8 @@ Deno.serve(async (req) => {
     console.error('Erro ao processar requisição:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Erro interno no servidor'
+        error: error instanceof Error ? error.message : 'Erro interno no servidor',
+        details: error instanceof Error ? error.stack : undefined
       }),
       { 
         status: 500,
