@@ -1,131 +1,51 @@
-import { logger } from '../utils/logger';
-import { supabase } from './supabase';
+
 import { gerarXmlNFe } from '../utils/nfeUtils';
+import { SignedXml } from 'xml-crypto';
+import { DOMParser } from '@xmldom/xmldom';
+import fs from 'fs';
+import https from 'https';
+import axios from 'axios';
 
-interface Certificate {
-  pfxBase64: string;
-  password: string;
+// Função auxiliar para assinar o XML
+export function assinarXml(xml: string, tagAssinatura = 'infNFe', idAttr = 'Id'): string {
+  const privateKey = fs.readFileSync('certs/privateKey.pem', 'utf-8');
+  const cert = fs.readFileSync('certs/publicCert.pem', 'utf-8');
+  const sig = new SignedXml();
+  sig.addReference(`//*[local-name(.)='${tagAssinatura}']`, ['http://www.w3.org/2000/09/xmldsig#enveloped-signature']);
+  sig.signingKey = privateKey;
+  sig.keyInfoProvider = {
+    getKeyInfo: () => "<X509Data></X509Data>",
+  };
+  const doc = new DOMParser().parseFromString(xml);
+  sig.computeSignature(xml);
+  const signedXml = sig.getSignedXml();
+  return signedXml;
 }
 
-interface EmitirNFeResponse {
-  status: 'autorizada' | 'rejeitada';
-  mensagem: string;
-  protocolo?: string;
-  xml?: string;
-}
+// Envio da NF-e
+export async function emitirNFe(dados: any) {
+  const xml = gerarXmlNFe(dados);
+  const xmlAssinado = assinarXml(xml);
 
-export const emitirNFe = async (data: any) => {
+  // Enviar para a SEFAZ (aqui simulado com log)
   try {
-    logger.info('Iniciando emissão de NFe', { documentData: data });
-
-    const response = await fetch('/api/emitir-nfe', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    let result;
-    try {
-      const text = await response.text();
-      if (!text) {
-        throw new Error('Resposta vazia do servidor');
+    const response = await axios.post(
+      'https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx',
+      xmlAssinado,
+      {
+        headers: {
+          'Content-Type': 'application/xml',
+        },
+        httpsAgent: new https.Agent({
+          pfx: fs.readFileSync('certs/certificado.pfx'),
+          passphrase: 'senha-certificado'
+        })
       }
-      result = JSON.parse(text);
-    } catch (parseError) {
-      logger.error('Erro ao processar resposta da API', { 
-        status: response.status, 
-        error: parseError,
-        responseText: await response.text().catch(() => 'Não foi possível ler o corpo da resposta')
-      });
-      throw new Error('Falha ao processar resposta do servidor');
-    }
+    );
 
-    if (!response.ok) {
-      logger.error('Erro ao emitir NFe', { 
-        status: response.status, 
-        error: result 
-      });
-      throw new Error(result.message || 'Falha ao emitir NFe');
-    }
-
-    logger.info('NFe emitida com sucesso', { result });
-    return result;
-  } catch (error) {
-    logger.error('Erro durante emissão de NFe', error);
-    throw error;
-  }
-};
-
-export const validarXml = async (xml: string, schema: string) => {
-  try {
-    logger.info('Iniciando validação de XML');
-
-    const response = await fetch('/api/validarXml', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ xml, schema }),
-    });
-
-    let result;
-    try {
-      const text = await response.text();
-      if (!text) {
-        throw new Error('Resposta vazia do servidor de validação');
-      }
-      result = JSON.parse(text);
-    } catch (parseError) {
-      logger.error('Erro ao processar resposta da validação', { 
-        status: response.status, 
-        error: parseError,
-        responseText: await response.text().catch(() => 'Não foi possível ler o corpo da resposta')
-      });
-      throw new Error('Falha ao processar resposta da validação do XML');
-    }
-
-    if (!response.ok) {
-      logger.error('Erro na validação do XML', { 
-        status: response.status, 
-        error: result 
-      });
-      throw new Error(result.message || 'Falha na validação do XML');
-    }
-
-    logger.info('XML validado com sucesso', { result });
-    return result;
-  } catch (error) {
-    logger.error('Erro durante validação do XML', error);
-    throw error;
-  }
-};
-
-export async function consultarNFe(chave: string): Promise<EmitirNFeResponse> {
-  try {
-    const { data: nota, error } = await supabase
-      .from('notas_fiscais')
-      .select('*')
-      .eq('chave', chave)
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!nota) {
-      throw new Error('NF-e não encontrada');
-    }
-
-    return {
-      status: nota.status as 'autorizada' | 'rejeitada',
-      mensagem: `NF-e ${nota.status}`,
-      protocolo: nota.protocolo,
-      xml: nota.xml
-    };
-  } catch (error) {
-    console.error('Erro ao consultar NF-e:', error);
-    throw error instanceof Error ? error : new Error('Erro desconhecido ao consultar NF-e');
+    return response.data;
+  } catch (err: any) {
+    console.error('Erro ao emitir NF-e:', err.message);
+    throw new Error('Erro ao enviar XML para SEFAZ: ' + err.message);
   }
 }
