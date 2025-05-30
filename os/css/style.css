@@ -1,0 +1,113 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed&family=Roboto+Mono&display=swap");
+
+body {
+  font-family: "Roboto Mono", monospace;
+  margin: 0;
+  padding: 0;
+}
+table tr td {
+  border: 1px solid;
+}
+
+.mid {
+  margin-top: 50px;
+}
+.cabecalho {
+  flex-direction: column;
+}
+.contHead {
+  background-color: #fff;
+  width: 816px;
+  max-width: 816px;
+  height: 200px;
+  max-height: 200px;
+  border: solid 1px black;
+}
+.contHead table tr td {
+  border: none;
+}
+.contHead table tr td input {
+  border: none;
+}
+
+.box1 {
+  display: grid;
+  align-content: space-between;
+  justify-items: center;
+  padding-top: 10px;
+  padding-bottom: 5px;
+  width: 850px;
+  max-width: 850px;
+  max-height: 200px;
+  background-color: rgb(255, 255, 255);
+  color: black;
+}
+.box2 {
+  display: grid;
+  padding-bottom: 10px;
+  align-content: space-between;
+  justify-items: center;
+  width: 850px;
+  max-width: 850px;
+  height: 400px;
+  max-height: 400px;
+  background-color: rgb(255, 255, 255);
+  color: black;
+}
+#descricao {
+  text-align: center;
+}
+.box2 input {
+  text-align: center;
+  box-shadow: 0 0 0 0;
+  border: 0 none;
+  outline: 0;
+}
+
+.button-print a {
+  color: white;
+}
+
+.lblbtn {
+  border-bottom: 4px solid #d5ba5e;
+  outline: 0;
+}
+
+.ico {
+  width: 25px;
+  height: 25px;
+}
+
+.quadrado {
+  width: 100vw;
+  height: 100vh;
+  background: #fff;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+.cont {
+  width: 850px;
+  height: 600px;
+  background: #fff;
+}
+
+@media (max-width: 850px) {
+  /* smartphones, Android phones, landscape iPhone */
+}
+
+@media print {
+  body {
+    background-color: white;
+  }
+
+  .button-print {
+    display: none;
+  }
+
+  .box1,
+  .box2 {
+    scale: 85%;
+  }
+}

@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed&family=Roboto+Mono&display=swap');
+
+html,
+body {
+    font-family: 'Roboto Mono', monospace;
+    height: 100%;
+}
+
+.wf {
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&display=swap');
+    font-family: 'Roboto Condensed', sans-serif;
+}
+
+#page-content {
+    flex: 1 0 auto;
+}
+
+
+
+
+
+:root {
+    --rosa: #f60d54;
+}
+
+/* Other Classes for Page Styling */
+
+body {
+    background: #000000;
+    background: linear-gradient(to right, #161616, #0d0d0d);
+}
+
+.bdanger {
+    border-top: 1px solid #f60d54;
+}
+
+footer small {
+    color: aliceblue;
+}
+
+footer small a {
+    color: #f60d54;
+}
+
+footer small a:hover {
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.rosa {
+    color: var(--rosa);
+}
+
+.mg {
+    min-height: 100px;
+}
+
+#btnmenu a {
+    font-size: small;
+    width: 200px;
+    height: 100px;
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+}
+
+.foneIcons {
+    font-size: 1em;
+}
+
+#text::after {
+    content: '|';
+    color: var(--rosa);
+    opacity: 1;
+    animation: pisca 1.0s infinite;
+}
+
+@keyframes pisca {
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+span {
+    color: var(--rosa);
+    animation: blink 1.0s infinite;
+}
+
+@keyframes blink {
+    to {
+        opacity: .0;
+    }
+}
+
+
+
+
+/*  Telas menores que 600px */
+@media screen and (max-width: 500px) {
+    #btnmenu a {
+        font-size: 10px;
+        height: 75px;
+    }
+
+    .foneIcons {
+        font-size: 15px;
+    }
+}
